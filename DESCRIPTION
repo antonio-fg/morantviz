@@ -22,3 +22,5 @@ Suggests:
 VignetteBuilder: knitr
 Depends: 
     R (>= 3.5)
+URL: https://github.com/morant-consultores/morantviz
+BugReports: https://github.com/morant-consultores/morantviz/issues
