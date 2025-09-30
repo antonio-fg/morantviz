@@ -13,43 +13,87 @@ knitr::opts_chunk$set(
 )
 ```
 
-# morantviz
-
-<!-- badges: start -->
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-<!-- badges: end -->
-
-The goal of morantviz is to ...
-
-## Installation
-
-You can install the development version of morantviz like so:
-
-``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
-```
-
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-```{r example}
+```{r setup}
 library(morantviz)
-## basic example code
+library(ggplot2)
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
-
-```{r cars}
-summary(cars)
+```{r}
+data("dicc")
+data("colores")
+data("diseno_demo")
+data("tema_morant")
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
+```{r}
+g <- Encuesta$new(diseno = diseno_demo,
+                  diccionario = dicc,
+                  colores = colores,
+                  color_principal = "pink",
+                  tema = tema_morant())
 ```
 
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+# conocimiento barras horizontal ------------------------------------------
+
+```{r}
+g$
+  contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
+  filtrar_respuesta(valor = "Sí")$
+  pegar_diccionario()$
+  pegar_color()$
+  envolver_etiquetas(columna = "nombre", ancho = 13)$
+  # reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)
+  reordenar_columna(columna = "nombre", tipo = "asc")
+
+g$tbl
+
+g$graficar_barras_h(x = "nombre")
+```
+
+# opinión barras facet ----------------------------------------------------
+
+```{r}
+g$
+  contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
+  pegar_diccionario()$
+  pegar_color()$
+  reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala", "Ns/Nc"))$
+  reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
+
+g$graficar_barras_h(x = "respuesta") +
+  facet_wrap(~nombre)
+```
+
+# opinión barras divergente ------------------------------------------------
+
+```{r}
+g$
+  contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
+  filtrar_respuesta(valor = c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))$
+  pegar_diccionario()$
+  pegar_color()$
+  reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular","Mala","Muy mala"))$
+  partir_regular(opcion = "Regular")$
+  cambiarSigno_media(negativo = c("Mala", "Muy mala"))$
+  reordenar_columna(columna = "nombre", tipo = "suma")$
+  etiquetar_regular(regular = "Regular")
+
+g$tbl
+g$graficar_barras_divergente(regular = "Regular",
+                             positivas = c("Buena", "Muy buena"),
+                             negativas = c("Mala", "Muy mala"))
+```
+
+# opinon + conocimiento + ns_nc
+
+```{r}
+g$saldos_opinion(sufijo_opinion = "opinion_pm",
+                 cat_ns_nc = "Ns/Nc",
+                 sufijo_conoce = "conoce_pm",
+                 cat_conoce = "Sí",
+                 actores = c("astiazaran", "delrio"),
+                 positivas = c("Muy buena", "Buena"),
+                 negativas = c("Mala", "Muy mala"),
+                 regular = "Regular")
+```
+
