@@ -43,6 +43,8 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Regular", "#f1c40f",
                            "Ns/Nc", "#95a5a6")
 
+
+
 g <- Encuesta$new(diseno = encuesta_demo$muestra$diseno,
                 diccionario = dicc,
                 colores = colores,
@@ -76,6 +78,15 @@ g$
 
 g$graficar_barras_h(x = "respuesta") +
   facet_wrap(~nombre)
+
+
+####ejemplo barras verticales
+g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
+g$pegar_color()
+g$graficar_barras_v(x = "respuesta") 
+
+
+
 
 
 # opinión barras divergente ------------------------------------------------
