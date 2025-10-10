@@ -130,7 +130,8 @@ Graficar <- R6::R6Class(
         dplyr::filter(respuesta %in% !!valor)
       invisible(self)
     },
-
+ 
+    
     #' Reordenar una columna
     #'
     #' Permite reordenar factores de forma manual, ascendente, descendente o por suma.
