@@ -131,7 +131,7 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
  
-    
+
     #' Reordenar una columna
     #'
     #' Permite reordenar factores de forma manual, ascendente, descendente o por suma.
@@ -294,6 +294,25 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
+
+    #' Graficar barras verticales
+    #'
+    #' @param y Variable en el eje y.
+    #' @return Objeto `ggplot`.
+    #' @examples
+    #' g$graficar_barras_v("nombre")
+    graficar_barras_v = function(x){
+      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x= !!rlang::sym(x), y = media))+
+        ggchicklet::geom_chicklet(ggplot2::aes(fill = color),width = 0.8 ) +
+        ggplot2::geom_text( ggplot2::aes(label = scales::percent(media, accuracy = 1)),
+      size = 5, vjust = -.1, family = self$tema$text$family) +
+        ggplot2::labs(caption = self$tbl$pregunta[1])+
+        ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,1))+
+        ggplot2::scale_fill_identity()+
+        self$tema
+        return(self$grafica)
+    },
+
 
     #' Graficar barras divergentes
     #'
