@@ -19,12 +19,6 @@ library(morantviz)
 library(ggplot2)
 ```
 
-```{r}
-data("dicc")
-data("colores")
-data("diseno_demo")
-data("tema_morant")
-```
 
 ```{r}
 g <- Encuesta$new(diseno = diseno_demo,
