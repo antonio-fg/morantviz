@@ -86,6 +86,11 @@ g$pegar_color()
 g$graficar_barras_v(x = "respuesta") 
 
 
+g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
+g$filtrar_respuesta(variable = "respuesta", valor ="Sí")
+g$pegar_color()
+g$tbl
+g$graficar_gauge() 
 
 
 
