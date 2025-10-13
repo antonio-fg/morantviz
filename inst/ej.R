@@ -19,9 +19,12 @@ usethis::use_readme_rmd( open = FALSE )
 
 library(encuestar)
 library(survey)
+#library(morantviz)
 library(dplyr)
 library(ggplot2)
 library(patchwork)
+
+
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -43,6 +46,7 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Regular", "#f1c40f",
                            "Ns/Nc", "#95a5a6")
 
+                      
 g <- Encuesta$new(diseno = encuesta_demo$muestra$diseno,
                 diccionario = dicc,
                 colores = colores,
@@ -57,12 +61,14 @@ g$
   pegar_diccionario()$
   pegar_color()$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
-  # reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)
+  reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)$
   reordenar_columna(columna = "nombre", tipo = "asc")
 
 g$tbl$nombre
 
 g$graficar_barras_h(x = "nombre")
+
+g$tbl
 
 
 # opinión barras facet ----------------------------------------------------
@@ -70,9 +76,10 @@ g$graficar_barras_h(x = "nombre")
 g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$
-  pegar_color()$
+  pegar_color()
   reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala", "Ns/Nc"))$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
+
 
 g$graficar_barras_h(x = "respuesta") +
   facet_wrap(~nombre)
