@@ -1,5 +1,6 @@
+
 # usethis::use_mit_license( "Emilio Morones" )  # You can set another license here
-usethis::use_readme_rmd( open = FALSE )
+# usethis::use_readme_rmd( open = FALSE )
 # usethis::use_code_of_conduct()
 # usethis::use_lifecycle_badge( "Experimental" )
 # usethis::use_news_md( open = FALSE )
@@ -46,7 +47,6 @@ g <- Encuesta$new(diseno = diseno_demo,
                 colores = colores,
                 color_principal = "pink",
                 tema = tema_morant())
-
 # conocimiento barras horizontal ------------------------------------------
 
 g$
@@ -69,12 +69,11 @@ g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$
   pegar_color()$
-  reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala", "Ns/Nc"))$
+  reordenar_columna(columna = "respuesta", tipo = "manual", c("Buena", "Regular", "Mala", "Muy mala", "Ns/Nc",))$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
 
 g$graficar_barras_h(x = "respuesta") +
   facet_wrap(~nombre)
-
 
 ####ejemplo barras verticales
 g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
@@ -83,12 +82,27 @@ g$graficar_barras_v(x = "respuesta")
 
 
 g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
+g$tbl
 g$filtrar_respuesta(variable = "respuesta", valor ="Sí")
+g$tbl
 g$pegar_color()
 g$tbl
-g$graficar_gauge() 
+g$graficar_gauge() +
+  labs(title = "ejemplo", caption =  "caption")+
+  theme(plot.title = element_text(family = "KuFam", size = 25))
 
 
+g$contar_variables(variables = c(
+  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$pegar_color()
+g$tbl
+g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
+
+g$preparar_datos_waffle("opinion_pm")
+g$tbl
+
+g$graficar_waffle() +
+  tema_morant(base_family = "KuFam")
 
 # opinión barras divergente ------------------------------------------------
 
