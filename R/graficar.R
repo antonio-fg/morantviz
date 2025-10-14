@@ -35,6 +35,9 @@
 
 Graficar <- R6::R6Class(
   "Graficar",
+  private = list(
+    pesos = NULL
+  ),
   public = list(
     #' @field tbl Tibble con los resultados procesados.
     tbl = NULL,
@@ -42,6 +45,8 @@ Graficar <- R6::R6Class(
     grafica = NULL,
     #' @field diseno Objeto survey design (de `survey`).
     diseno = NULL,
+    #' @field bd base de datos a analizar.
+    bd = NULL,
     #' @field diccionario Diccionario de variables y etiquetas.
     diccionario = NULL,
     #' @field colores Tabla de colores por respuesta.
@@ -62,8 +67,15 @@ Graficar <- R6::R6Class(
     #' @examples
     #' g <- Graficar$new(diseno, diccionario, colores, "pink", tema_morant())
     #'
-    initialize = function(diseno, diccionario, colores, color_principal, tema) {
-      self$diseno <- diseno
+    initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema) {
+      if(!is.null(diseno)) {
+        self$diseno <- diseno
+        private$pesos <- T
+      }
+      if(!is.null(bd)) {
+        self$bd <- bd
+        private$pesos <- F
+      }
       self$diccionario <- diccionario
       self$colores <- colores
       self$tema <- tema
@@ -80,13 +92,24 @@ Graficar <- R6::R6Class(
     #' @examples
     #' g$contar_variables(c("conoce_pm_astiazaran", "conoce_pm_delrio"), confint = FALSE)
 
-    contar_variables = function(variables, confint){
-      self$tbl <- contar_vars_pesos(
-        variables = variables,
-        confint = confint,
-        diccionario = self$diccionario,
-        diseno = self$diseno
-      )
+    contar_variables = function(variables, confint = F, pct = T){
+      if(private$pesos){
+        self$tbl <- contar_vars_pesos(
+          variables = variables,
+          confint = confint,
+          diccionario = self$diccionario,
+          diseno = self$diseno
+        )
+      }
+
+      if(!private$pesos){
+        self$tbl <- contar_vars(
+          bd = self$bd,
+          variables = variables,
+          pct = pct
+        )
+      }
+
       invisible(self)
     },
 
@@ -109,12 +132,13 @@ Graficar <- R6::R6Class(
     #'
     #' @param columna Columna a reordenar.
     #' @param tipo Tipo de orden: `"manual"`, `"asc"`, `"desc"`, `"suma"`.
+    #' @param respecto_a Con respecto a qué columna es el criterio para ordenar
     #' @param ... Niveles en orden manual si `tipo = "manual"`.
     #' @return La tabla interna (`self$tbl`) se actualiza.
     #' @examples
     #' g$reordenar_columna("nombre", "asc")
     #' g$reordenar_columna("respuesta", "manual", c("Sí", "No"))
-    reordenar_columna = function(columna, tipo, ...){
+    reordenar_columna = function(columna, tipo, respecto_a = "media",...){
       match.arg(tipo, choices = c("manual", "asc", "desc", "suma"))
 
       if(tipo == "manual"){
@@ -125,14 +149,14 @@ Graficar <- R6::R6Class(
 
       if(tipo %in% "desc"){
         self$tbl <- self$tbl |>
-          dplyr::arrange(dplyr::desc(media)) |>
+          dplyr::arrange(dplyr::desc(!!rlang::sym(respecto_a))) |>
           dplyr::mutate(!!rlang::sym(columna) :=
                           forcats::fct_inorder(!!rlang::sym(columna)))
       }
 
       if(tipo == "asc"){
         self$tbl <- self$tbl |>
-          dplyr::arrange(media) |>
+          dplyr::arrange(!!rlang::sym(respecto_a)) |>
           dplyr::mutate(!!rlang::sym(columna) :=
                           forcats::fct_inorder(!!rlang::sym(columna)))
       }
@@ -140,7 +164,7 @@ Graficar <- R6::R6Class(
       if(tipo == "suma"){
         self$tbl <- self$tbl |>
           dplyr::mutate(!!rlang::sym(columna) :=
-                          forcats::fct_reorder(!!rlang::sym(columna), media, .fun = sum))
+                          forcats::fct_reorder(!!rlang::sym(columna), !!rlang::sym(respecto_a), .fun = sum))
       }
 
       invisible(self)
@@ -249,10 +273,10 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x){
-      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = media)) +
+    graficar_barras_h = function(x, y = "media"){
+      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))) +
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color)) +
-        ggplot2::geom_text(ggplot2::aes(label = scales::percent(media)),
+        ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y))),
                            size = 5, hjust = -.1,
                            family = self$tema$text$family) +
         ggplot2::coord_flip() +
@@ -344,8 +368,8 @@ Encuesta <- R6::R6Class(
     #' Inicializa la clase Encuesta
     #'
     #' @inheritParams Graficar$initialize
-    initialize = function(diseno, diccionario, colores, color_principal, tema){
-      super$initialize(diseno, diccionario, colores, color_principal, tema)
+    initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema){
+      super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
 
     #' Graficar saldos de opinión y conocimiento

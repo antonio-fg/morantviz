@@ -17,11 +17,7 @@ usethis::use_readme_rmd( open = FALSE )
 # usethis::use_data(tema_morant)
 # Ejemplo -----------------------------------------------------------------
 
-library(encuestar)
-library(survey)
-library(dplyr)
-library(ggplot2)
-library(patchwork)
+library(morantviz)
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -43,7 +39,7 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Regular", "#f1c40f",
                            "Ns/Nc", "#95a5a6")
 
-g <- Encuesta$new(diseno = encuesta_demo$muestra$diseno,
+g <- Encuesta$new(diseno = diseno_demo,
                 diccionario = dicc,
                 colores = colores,
                 color_principal = "pink",
