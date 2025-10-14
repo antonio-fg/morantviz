@@ -308,6 +308,88 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
+
+    #' Método waffle
+    #'
+    #' @param x Prefijo a remover.
+    #' @return Objeto `ggplot`.
+    #' @examples
+    #' g$preparar_datos_waffle("prefijo_remover") 
+    preparar_datos_waffle = function(prefijo_remover) {
+      # Limpiar, completar y calcular porcentajes
+      self$tbl <- self$tbl %>%
+        dplyr::mutate(
+          codigo = stringr::str_remove(codigo, prefijo_remover),
+          codigo = stringr::str_to_title(stringr::str_replace_all(codigo, "_", " ")),          porcentaje = base::round(media * 100)
+        ) %>%
+        tidyr::complete(codigo, respuesta, fill = list(porcentaje = 0, media = 0))
+      # Ordenar columnas según el porcentaje de la respuesta "Sí"
+      orden_columnas <- self$tbl %>%
+        dplyr::filter(respuesta == "Sí") %>%
+        dplyr::arrange(desc(porcentaje)) %>%
+        dplyr::pull(codigo)
+      # Aplicar el orden y retornar el data frame fina
+      self$tbl <- self$tbl %>%
+        dplyr::mutate(codigo = base::factor(codigo)) |> 
+        dplyr::mutate(respuesta = base::factor(respuesta))
+      invisible(self)
+    },
+    
+    
+    #' Método waffle
+    #'
+    #' @param x Prefijo a remover.
+    #' @return Objeto `ggplot`.
+    #' @examples
+    #' g$ preparar_datos_waffle("prefijo_remover") 
+     graficar_waffle = function() {
+       # --- PASO 1: DEFINIR LA GEOMETRÍA DEL GRÁFICO ---
+       # # Crear una base con coordenadas y etiquetas para cada celda
+
+       niveles_x <- base::levels(self$tbl$codigo)
+       niveles_y <- base::levels(self$tbl$respuesta)
+
+       df_base <- self$tbl %>%
+         dplyr::mutate(
+          row = base::as.numeric(factor(respuesta)),
+          col = base::as.numeric(factor(codigo)),
+          fill_id = porcentaje,
+          etiqueta = dplyr::if_else(media > 0, base::paste0(porcentaje, "%"), ""),
+          .id = dplyr::row_number()
+        )
+       # Parámetros y molde para la forma "squircle"
+       n_puntos <- 100; a <- 0.45; b <- 0.45; exp <- 9
+       theta <- base::seq(0, 2 * pi, length.out = n_puntos)
+       base_shape <- tibble(
+        x_unit = a * base::sign(cos(theta)) * base::abs(base::cos(theta))^(2 / exp),
+        y_unit = b * base::sign(sin(theta)) * base::abs(base::sin(theta))^(2 / exp)
+       ) %>%
+         dplyr::mutate(vertex_id = dplyr::row_number()) 
+       # Combinar los datos con el molde para generar los polígono
+       df_squircles <- tidyr::crossing(df_base, base_shape) %>%
+         dplyr::mutate(x = col + x_unit, y = row + y_unit) %>%
+         dplyr::arrange(.id, vertex_id)
+       
+       
+       
+       g_squircles <- ggplot2::ggplot(df_squircles, ggplot2::aes(x = x, y = y, group = .id)) +
+         ggplot2::geom_polygon(ggplot2::aes(fill = fill_id), color = "white", linewidth = 1.5) +
+         ggplot2::geom_text(
+          data = df_base,
+          ggplot2::aes(x = col, y = row, label = etiqueta),
+          color = "black", size = 10, inherit.aes = FALSE
+        ) +
+         ggplot2::scale_fill_gradient(low = "#e6e0f3", high = "#7b59b6", limits = c(0, 100), guide = "none") +
+         ggplot2::scale_x_continuous(breaks = base::seq_along(niveles_x), labels = niveles_x, position = "top") +
+         ggplot2::scale_y_reverse(breaks = base::seq_along(niveles_y), labels = niveles_y) +
+         ggplot2::coord_fixed() +
+         tema_morant()+
+         ggplot2::theme(panel.grid = ggplot2::element_blank(), axis.text = ggplot2::element_text(face = "bold", size = 14))
+       
+       
+       return(g_squircles)
+     },
+
     
 
     #' Graficar barras divergentes
