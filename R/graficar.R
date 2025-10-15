@@ -317,28 +317,26 @@ Graficar <- R6::R6Class(
     },
 
     # Lineas 
-    graficar_lineas_facet = function(
-      data,
+    graficar_lineas_clasificacion = function(
       x_var = "respuesta",
       y_var = "media",
       titulo = "",
       subtitulo = "",
       eje_x = "",
       caption="",
-      colores = c("#295DAB"),
-      ylim = c(0, 100),
-      superponer = NULL
+      colores = self$color_principal
       ){
         group_var = "codigo"
-        #tbl <- self$tbl |> dplyr::mutate(media = round(media * 100, 1))
         aes_args <- aes_string(x = x_var, y = y_var, group = group_var, color = group_var)
-        self$grafica <- tbl |> ggplot(aes_args) +
-          geom_line(linewidth = 1) +
-          geom_point(size = 3) +
-          geom_text(aes(label = paste0(round((!!sym(y_var)), 1), "%")),
-              vjust = -1, size = 4.2) +
-          scale_y_continuous(labels = function(x) paste0(x, "%"), limits = ylim) +
-          scale_color_manual(values = colores) +
+        self$grafica <- self$tbl  |> ggplot(aes_args) +
+          geom_line(linewidth = 1,color = self$color_principal) +
+          geom_point(size = 3,color = self$color_principal) +
+          geom_text(aes(label = scales::percent(media,accuracy = 1)),
+                      size = 5, hjust = -.1,
+                      family = self$tema$text$family,
+              vjust = -1, size = 4.2,color = "black") +
+          scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                                    limits = c(0,1)) +
           theme_minimal(base_size = 14) +
           labs(
             title = titulo,
@@ -347,27 +345,14 @@ Graficar <- R6::R6Class(
             y = NULL,
             caption = caption) +
           theme(
-            legend.position = "none",
-            panel.grid.minor = element_blank(),
-            panel.grid.major.y = element_blank(),
-            panel.grid.major.x = element_line(
-            color = "gray85",
-            linewidth = 0.6,
-            linetype = "dotted"
-              ),
-
             panel.border = element_blank(),
             axis.ticks = element_blank(),
             plot.title = element_text(size = 18, face = "bold"),
             plot.subtitle = element_text(size = 14, color = "gray40", margin = margin(b = 10)),  
             plot.caption = element_text(size = 12, color = "gray40", hjust = 1),
             strip.text = element_text(size = 16, face = "bold")  
-          ) + 
-          geom_hline(yintercept = 0, color = "#C72E3C", linewidth = 1)
+          ) + self$tema
           
-          if (!is.null(superponer)){
-            self$grafica<- self$grafica + superponer
-          }
       return(self$grafica)
     },
 
