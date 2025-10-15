@@ -268,7 +268,7 @@ Graficar <- R6::R6Class(
     self$tbl <- self$tbl |>
       dplyr::mutate(respuesta = as.character(respuesta)) |>
       dplyr::left_join(paleta_extendida, by = "respuesta") |>
-      # 🔧 aquí el cambio clave: aseguramos la existencia de color
+      # aquí el cambio clave: aseguramos la existencia de color
       dplyr::mutate(
         color = dplyr::if_else(
           is.na(.data$color),
@@ -334,7 +334,7 @@ Graficar <- R6::R6Class(
           geom_text(aes(label = scales::percent(media,accuracy = 1)),
                       size = 5, hjust = -.1,
                       family = self$tema$text$family,
-              vjust = -1, size = 4.2,color = "black") +
+              vjust = -1,color = "black") +
           scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                                     limits = c(0,1)) +
           theme_minimal(base_size = 14) +
