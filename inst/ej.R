@@ -26,8 +26,7 @@ dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_lia", "Lía Limón", "Conoce o ha escuchado de (...)",
                         "conoce_pm_javier", "Javier López Casarín", "Conoce o ha escuchado de (...)",
                         "opinion_pm_astiazaran", "Astiazarán","¿Cuál es su opinión sobre (...)?",
-                        "opinion_pm_delrio", "Del Río","¿Cuál es su opinión sobre (...)?"
-)
+                        "opinion_pm_delrio", "Del Río","¿Cuál es su opinión sobre (...)?")
 
 
 colores <- tibble::tribble(~respuesta, ~color,
@@ -39,6 +38,7 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Muy mala", "#e74c3c",
                            "Regular", "#f1c40f",
                            "Ns/Nc", "#95a5a6")
+
 
 
 g <- Encuesta$new(diseno = diseno_demo,
@@ -73,12 +73,24 @@ g$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
 
 g$graficar_barras_h(x = "respuesta") +
-  facet_wrap(~nombre)
+  facet_wrap(~nombre)+
+  tema_morant(base_family = "KuFam")
 
 ####ejemplo barras verticales
 g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
 g$pegar_color()
 g$graficar_barras_v(x = "respuesta") 
+
+
+#ejemplo lollipops
+g$contar_variables(variables = c( "opinion_pm_delrio"), confint = F)$
+  pegar_diccionario()$
+  pegar_color()
+
+
+g$graficar_lollipops("respuesta")+
+  tema_morant(base_family = "KuFam")+
+  facet_wrap(~nombre)
 
 
 g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
@@ -94,6 +106,7 @@ g$graficar_gauge() +
 
 g$contar_variables(variables = c(
   "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$tbl
 g$pegar_color()
 g$tbl
 g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))

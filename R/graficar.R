@@ -337,6 +337,35 @@ Graficar <- R6::R6Class(
       size = 12, fontface = "bold", color = "black")
       return(self$grafica)
     },
+    #' Graficar lollipops sin multirespuesta
+    #'
+    #' @param x Variable en el eje y.
+    #' @return Objeto `ggplot`.
+    #' @
+    #' g$graficar_lollipops("respuesta")
+    graficar_lollipops = function(x, y = "media"){
+      self$grafica <- self$tbl |> 
+        ggplot2::ggplot(ggplot2::aes(x = stats::reorder(!!rlang::sym(x), !!rlang::sym(y)), y = !!rlang::sym(y), color = color)) +
+        ggplot2::geom_segment(ggplot2::aes(xend = !!rlang::sym(x), y = 0, yend = !!rlang::sym(y)), linewidth = 1) +
+        ggplot2::geom_point(size = 5) +
+        ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y), accuracy = 1.)),
+      size = 6, hjust = -0.5, color = "black") +
+        ggplot2::coord_flip() +
+        ggplot2::scale_x_discrete(labels = function(x) stringr::str_wrap(string = x, width = 60)) +
+        ggplot2::scale_y_continuous(limits = c(0,1),labels = scales::percent_format())+
+        ggplot2::scale_color_identity(guide = "none") +
+        ggplot2::labs(title = " ")+
+        tema_morant()+
+        ggplot2::theme(
+          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+          axis.text.y = ggplot2::element_text(size = 15, family = "KuFam"),
+          panel.grid.major.y = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank(),
+          plot.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
+          panel.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
+          legend.background = ggplot2::element_rect(color = "transparent", fill = "transparent") )
+      return(self$grafica)
+    },
 
 
     #' Método waffle
@@ -419,6 +448,9 @@ Graficar <- R6::R6Class(
        
        return(g_squircles)
      },
+
+
+     
 
     
 
