@@ -1,4 +1,4 @@
-contar_1_pesos <- function(variable, diseno, confint = T){
+contar_1_pesos <- function(variable, diseno, confint){
   surveySummary_mean <- survey::svymean(survey::make.formula(variable),
                                         design = diseno,
                                         na.rm = TRUE)
