@@ -225,19 +225,71 @@ Graficar <- R6::R6Class(
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
     #' @examples
     #' g$pegar_color()
-    pegar_color = function(){
-      self$tbl <- self$tbl |>
-        dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
-        dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
-      invisible(self)
-    },
+    #pegar_color = function(){
+    #  self$tbl <- self$tbl |>
+    #    dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
+    #    dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
+    #  invisible(self)
+    #},
+    
+  pegar_color = function() {
+
+  if (is.null(self$colores)) {
+    # Caso 1: sin paleta definida → usa color principal para todas
+    self$tbl <- self$tbl |>
+      dplyr::mutate(color = self$color_principal)
+
+  } else if (is.vector(self$colores) && !is.null(names(self$colores))) {
+    #  Caso 2: vector nombrado → convertir a tibble
+    paleta_extendida <- tibble::tibble(
+      respuesta = names(self$colores),
+      color = unname(self$colores)
+    )
+
+    self$tbl <- self$tbl |>
+      dplyr::mutate(respuesta = as.character(respuesta)) |>
+      dplyr::left_join(
+        paleta_extendida |> dplyr::mutate(respuesta = as.character(respuesta)),
+        by = "respuesta"
+      ) |>
+      dplyr::mutate(
+        color = dplyr::if_else(is.na(.data$color), self$color_principal, .data$color)
+      )
+
+  } else if (tibble::is_tibble(self$colores)) {
+    #  Caso 3: tibble → unir directamente
+    if (!all(c("respuesta", "color") %in% names(self$colores))) {
+      stop(" El tibble `colores` debe tener columnas `respuesta` y `color`.")
+    }
+
+    paleta_extendida <- self$colores |> 
+      dplyr::mutate(respuesta = as.character(respuesta))
+
+    self$tbl <- self$tbl |>
+      dplyr::mutate(respuesta = as.character(respuesta)) |>
+      dplyr::left_join(paleta_extendida, by = "respuesta") |>
+      # 🔧 aquí el cambio clave: aseguramos la existencia de color
+      dplyr::mutate(
+        color = dplyr::if_else(
+          is.na(.data$color),
+          self$color_principal,
+          .data$color
+        )
+      )
+  } else {
+    stop(" `colores` debe ser NULL, vector nombrado o tibble con columnas `respuesta` y `color`.")
+  }
+
+  invisible(self)
+  },
+
 
     #' Agregar saldo por grupo
     #'
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
-    agregar_saldo = function(por){
+    agregar_saldo = function(por){ 
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(media), .by = !!rlang::sym(por))
       invisible(self)
@@ -263,6 +315,64 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
+
+    # Lineas 
+    graficar_lineas_facet = function(
+      data,
+      x_var = "respuesta",
+      y_var = "media",
+      titulo = "",
+      subtitulo = "",
+      eje_x = "",
+      caption="",
+      colores = c("#295DAB"),
+      ylim = c(0, 100),
+      superponer = NULL
+      ){
+        group_var = "codigo"
+        #tbl <- self$tbl |> dplyr::mutate(media = round(media * 100, 1))
+        aes_args <- aes_string(x = x_var, y = y_var, group = group_var, color = group_var)
+        self$grafica <- tbl |> ggplot(aes_args) +
+          geom_line(linewidth = 1) +
+          geom_point(size = 3) +
+          geom_text(aes(label = paste0(round((!!sym(y_var)), 1), "%")),
+              vjust = -1, size = 4.2) +
+          scale_y_continuous(labels = function(x) paste0(x, "%"), limits = ylim) +
+          scale_color_manual(values = colores) +
+          theme_minimal(base_size = 14) +
+          labs(
+            title = titulo,
+            subtitle = subtitulo,
+            x = eje_x,
+            y = NULL,
+            caption = caption) +
+          theme(
+            legend.position = "none",
+            panel.grid.minor = element_blank(),
+            panel.grid.major.y = element_blank(),
+            panel.grid.major.x = element_line(
+            color = "gray85",
+            linewidth = 0.6,
+            linetype = "dotted"
+              ),
+
+            panel.border = element_blank(),
+            axis.ticks = element_blank(),
+            plot.title = element_text(size = 18, face = "bold"),
+            plot.subtitle = element_text(size = 14, color = "gray40", margin = margin(b = 10)),  
+            plot.caption = element_text(size = 12, color = "gray40", hjust = 1),
+            strip.text = element_text(size = 16, face = "bold")  
+          ) + 
+          geom_hline(yintercept = 0, color = "#C72E3C", linewidth = 1)
+          
+          if (!is.null(superponer)){
+            self$grafica<- self$grafica + superponer
+          }
+      return(self$grafica)
+    },
+
+
+    
 
     #' Graficar barras divergentes
     #'
@@ -347,6 +457,62 @@ Encuesta <- R6::R6Class(
     initialize = function(diseno, diccionario, colores, color_principal, tema){
       super$initialize(diseno, diccionario, colores, color_principal, tema)
     },
+
+
+  
+  
+    #' @param columna_valor Nombre de la columna de la que se calculará el máximo (por defecto es 'media').
+    #' @return Modifica el objeto self$tbl, agregando la columna 'Maximo_Global'.
+    #' # La lógica de mutate calcula el máximo de la columna especificada
+    # y lo asigna a una nueva columna en el data frame de la clase (self$tbl).
+  
+
+    ################################### Función máximo  ###################################
+    
+  color_maximo = function(col_max) {
+    
+  #  Calcula el valor máximo
+  valor_maximo <- max(self$tbl$media, na.rm = TRUE)
+
+  #Esta especificado por el usuario ahora, pero podria estar definido en
+  #el script de colores 
+
+  # Modifica directamente el color de la fila con ese máximo
+  self$tbl <- self$tbl |>
+    dplyr::mutate(
+      color = dplyr::if_else(
+        media == valor_maximo,
+        col_max,
+        color
+      )
+    )
+
+  invisible(self)
+  },
+
+degradado_continuo = function(colores_base,resaltar_maximo = TRUE) {
+
+
+  #  Crear función continua de color según el rango de 'media'
+  escala_color <- scales::col_numeric(
+    palette = colores_base,
+    domain = range(self$tbl$media, na.rm = TRUE)
+  )
+
+  #  Asignar color continuo a cada valor de 'media'
+  self$tbl <- self$tbl |>
+    dplyr::mutate(color = escala_color(media))
+
+  #  Si se desea, resaltar el máximo en un color especial
+
+  col_max <- "#7ad29d" #color temporal
+  if (isTRUE(resaltar_maximo)) {
+    self$color_maximo(col_max)
+  }
+
+  invisible(self)
+},
+
 
     #' Graficar saldos de opinión y conocimiento
     #'
