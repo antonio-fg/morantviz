@@ -97,7 +97,6 @@ Graficar <- R6::R6Class(
         self$tbl <- contar_vars_pesos(
           variables = variables,
           confint = confint,
-          diccionario = self$diccionario,
           diseno = self$diseno
         )
       }
@@ -107,6 +106,18 @@ Graficar <- R6::R6Class(
           bd = self$bd,
           variables = variables,
           pct = pct
+        )
+      }
+
+      invisible(self)
+    },
+    contar_variables_porGrupos = function(variables, grupos, confint){
+      if(private$pesos){
+        self$tbl <- contar_vars_porGrupos_pesos(
+          variables = variables,
+          grupos = grupos,
+          confint = confint,
+          diseno = self$diseno
         )
       }
 

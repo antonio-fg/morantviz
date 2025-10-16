@@ -26,10 +26,41 @@ contar_1_pesos <- function(variable, diseno, confint){
 
 }
 
-contar_vars_pesos <- function(variables, diccionario, diseno, confint){
+contar_vars_pesos <- function(variables, diseno, confint){
 
   purrr::map_dfr(.x = variables,
                  .f = contar_1_pesos,
                  diseno = diseno,
                  confint = confint)
 }
+
+contar_vars_porGrupos_pesos <- function(variables, grupos, diseno, confint){
+  surveySummary_mean <- svyby(formula = make.formula(variables),
+                              by = make.formula(grupos),
+                              design = diseno, FUN = svymean, na.rm = T)
+
+
+  aux <- surveySummary_mean |>
+    as_tibble() |>
+    select(-starts_with("se.")) |>
+    pivot_longer(-all_of(grupos), values_to = "media")
+
+  if(confint){
+    aux <- aux |> left_join(
+      surveySummary_mean |>
+        confint() |>
+        as_tibble(rownames = "id") |>
+        separate(id, into = c("grupos", "name"), sep = ":") |>
+        separate(grupos, into = grupos, sep = "\\.")
+    )
+  }
+
+  aux |>
+    mutate(codigo = str_match(name, variables |> paste(collapse = "|")) |> as.vector(),
+           respuesta = str_replace(name, codigo, ""), .before = media) |>
+    select(-name)
+
+}
+
+
+
