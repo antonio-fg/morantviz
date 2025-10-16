@@ -135,7 +135,18 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
-    contar_variable_multirespuesta = function(variable, sep = "\\s|\\s", confint){
+    #' Contar variable multirespuesta
+    #'
+    #' Llama a `contar_variable_multirespuesta` para obtener proporciones de una variable multirespuesta con algún separador.
+    #'
+    #' @param variable Nombre de la variable multirespuesta
+    #' @param sep Separador de las respuestas elegidas.
+    #' @param confint Lógico; si calcular intervalos de confianza.
+    #' @return La tabla interna (`self$tbl`) se actualiza.
+    #' @examples
+    #' g$contar_variable_multirespuesta(variable = "problema_inseguridad", sep = "|", confint = F)
+    #'
+    contar_variable_multirespuesta = function(variable, sep, confint){
       self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
                                   variable = variable,
                                   sep = sep, confint = confint)

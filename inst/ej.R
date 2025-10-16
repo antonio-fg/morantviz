@@ -40,10 +40,10 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Ns/Nc", "#95a5a6")
 
 g <- Encuesta$new(diseno = diseno_demo,
-                diccionario = dicc,
-                colores = colores,
-                color_principal = "pink",
-                tema = tema_morant())
+                  diccionario = dicc,
+                  colores = colores,
+                  color_principal = "pink",
+                  tema = tema_morant())
 
 # conocimiento barras horizontal ------------------------------------------
 
@@ -226,6 +226,6 @@ g$tbl
 
 g$contar_variable_multirespuesta(variable = "problema_inseguridad",
                                  sep = "\\s\\/\\s",
-                             confint = F)
+                                 confint = F)
 
 g$tbl
