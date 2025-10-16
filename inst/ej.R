@@ -43,10 +43,12 @@ colores <- tibble::tribble(~respuesta, ~color,
 
 g <- Encuesta$new(diseno = diseno_demo,
 
+
                 diccionario = dicc,
                 colores = colores,
                 color_principal = "pink",
                 tema = tema_morant())
+
 # conocimiento barras horizontal ------------------------------------------
 
 g$
@@ -254,4 +256,21 @@ g$graficar_barras_divergente(regular = regular,
 g$
   contar_variables(variables = c("conoce_pm_astiazaran"), confint = T)$
   filtrar_respuesta(valor = c("Sí"))
+g$tbl
+
+
+
+# cruce -------------------------------------------------------------------
+
+g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio"),
+                             grupos = c("sexo", "region"), confint = F)
+g$tbl
+
+
+# multirespuesta ----------------------------------------------------------
+
+g$contar_variable_multirespuesta(variable = "problema_inseguridad",
+                                 sep = "\\s\\/\\s",
+                                 confint = F)
+
 g$tbl
