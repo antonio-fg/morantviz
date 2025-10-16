@@ -378,6 +378,7 @@ Graficar <- R6::R6Class(
       size = 12, fontface = "bold", color = "black")
       return(self$grafica)
     },
+
     #' Graficar lollipops sin multirespuesta
     #'
     #' @param x Variable en el eje y.
@@ -407,7 +408,6 @@ Graficar <- R6::R6Class(
           legend.background = ggplot2::element_rect(color = "transparent", fill = "transparent") )
       return(self$grafica)
     },
-
 
     #' Método waffle
     #'
@@ -491,9 +491,6 @@ Graficar <- R6::R6Class(
      },
 
 
-     
-
-    
 
     #' Graficar barras divergentes
     #'

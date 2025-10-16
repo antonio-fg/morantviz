@@ -41,14 +41,12 @@ colores <- tibble::tribble(~respuesta, ~color,
 
 
 
-g <- Encuesta$new(diseno = diseno_demo,
 
-
+g <- Encuesta$new(diseno = encuesta_demo$muestra$diseno,
                 diccionario = dicc,
                 colores = colores,
                 color_principal = "pink",
                 tema = tema_morant())
-
 # conocimiento barras horizontal ------------------------------------------
 
 g$
@@ -94,6 +92,34 @@ g$graficar_lollipops("respuesta")+
   tema_morant(base_family = "KuFam")+
   facet_wrap(~nombre)
 
+####ejemplo barras verticales
+g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
+g$pegar_color()
+g$graficar_barras_v(x = "respuesta") 
+
+
+g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
+g$tbl
+g$filtrar_respuesta(variable = "respuesta", valor ="Sí")
+g$tbl
+g$pegar_color()
+g$tbl
+g$graficar_gauge() +
+  labs(title = "ejemplo", caption =  "caption")+
+  theme(plot.title = element_text(family = "KuFam", size = 25))
+
+
+g$contar_variables(variables = c(
+  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$pegar_color()
+g$tbl
+g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
+
+g$preparar_datos_waffle("opinion_pm")
+g$tbl
+
+g$graficar_waffle() +
+  tema_morant(base_family = "KuFam")
 
 g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
 g$tbl
