@@ -39,7 +39,7 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Regular", "#f1c40f",
                            "Ns/Nc", "#95a5a6")
 
-g <- Encuesta$new(bd = diseno_demo$variables,
+g <- Graficar$new(bd = diseno_demo$variables,
                   diccionario = dicc,
                   colores = colores,
                   color_principal = "pink",
@@ -66,7 +66,7 @@ g$graficar_barras_h(x = "nombre", y = "pct")
 
 g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"))$
-  filtrar_respuesta(valor = c("Buena", "Muy buena", "Muy mala", "Mala"))$
+  filtrar_respuesta(valor = c("Buena", "Muy buena", "Regular","Muy mala", "Mala", "Ns/Nc"))$
   calcular_pct(grupo = "codigo")$
   pegar_diccionario()$
   pegar_color()$
