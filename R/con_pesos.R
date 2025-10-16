@@ -19,10 +19,9 @@ contar_1_pesos <- function(variable, diseno, confint){
   }
 
   aux |>
-    mutate(respuesta = stringr::str_replace(pattern = rlang::expr_text(ensym(variable)),
-                                            replacement = "",
-                                            string = respuesta),
-           codigo = rlang::expr_text(ensym(variable)))
+    mutate(codigo = str_match(respuesta, variable) |>
+             as.vector(),
+           respuesta = str_replace(respuesta, codigo, ""))
 
 }
 
@@ -62,5 +61,43 @@ contar_vars_porGrupos_pesos <- function(variables, grupos, diseno, confint){
 
 }
 
+
+
+contar_multirespuesta_pesos <- function(diseno, variable, sep = "\\s\\/\\s", confint){
+  pesos <- weights(diseno)
+
+  largo <- diseno$variables |>
+    select(all_of(variable)) |>
+    mutate(pesos = !!pesos) |>
+    as_tibble() |>
+    separate_rows(!!rlang::sym(variable), sep = sep) |>
+    mutate(!!rlang::sym(variable) := str_squish(!!rlang::sym(variable)))
+
+
+  diseno_largo <- svydesign(ids = ~1, data = largo, weights = ~pesos)
+
+  surveySummary_mean <- svytotal(x = make.formula(variable), design = diseno_largo, na.rm = T)
+
+  aux <- surveySummary_mean |>
+    tibble::as_tibble(rownames = "respuesta") |>
+    rename(media = total, ee = SE)
+
+  if(confint){
+    aux <- aux |>
+      left_join(
+        surveySummary_mean |>
+          stats::confint() %>%
+          tibble::as_tibble(rownames = "respuesta") |>
+          rename(inf = 2, sup = 3),
+        join_by(respuesta))
+  }
+
+  aux |>
+    mutate(across(where(is.numeric), ~.x/sum(pesos)),
+           codigo = str_match(respuesta, variable) |>
+             as.vector(),
+           respuesta = str_replace(respuesta, codigo, ""))
+
+}
 
 

@@ -135,6 +135,13 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
+    contar_variable_multirespuesta = function(variable, sep = "\\s|\\s", confint){
+      self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
+                                  variable = variable,
+                                  sep = sep, confint = confint)
+
+      invisible(self)
+    },
     calcular_pct = function(var = "n", grupo = "codigo"){
       self$tbl <- self$tbl |>
           mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))

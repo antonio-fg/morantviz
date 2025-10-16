@@ -218,5 +218,14 @@ g$tbl
 # cruce -------------------------------------------------------------------
 
 g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio"),
-                             grupos = c("region", "sexo"), confint = F)
+                             grupos = c("sexo", "region"), confint = F)
+g$tbl
+
+
+# multirespuesta ----------------------------------------------------------
+
+g$contar_variable_multirespuesta(variable = "problema_inseguridad",
+                                 sep = "\\s\\/\\s",
+                             confint = F)
+
 g$tbl
