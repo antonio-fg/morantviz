@@ -111,6 +111,18 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
+
+    #' Contar variables ponderadas por grupos
+    #'
+    #' Llama a `contar_vars_porGrupos_pesos` para obtener proporciones y medias.
+    #'
+    #' @param variables Vector de nombres de variables.
+    #' @param grupos Vector de grupos.
+    #' @param confint Lógico; si calcular intervalos de confianza.
+    #' @return La tabla interna (`self$tbl`) se actualiza.
+    #' @examples
+    #' g$contar_variables_porGruos(c("conoce_pm_astiazaran", "conoce_pm_delrio"), grupos = "region", confint = FALSE)
+    #'
     contar_variables_porGrupos = function(variables, grupos, confint){
       if(private$pesos){
         self$tbl <- contar_vars_porGrupos_pesos(
