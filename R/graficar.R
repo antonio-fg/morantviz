@@ -321,7 +321,7 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x, y = "media"){
+    graficar_barras_h = function(x){
       self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))) +
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color)) +
         ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y))),
@@ -342,7 +342,7 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_v("nombre")
-    graficar_barras_v = function(x){
+    graficar_barras_v = function(x, y = "media"){
       self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x= !!rlang::sym(x), y = media))+
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color),width = 0.8 ) +
         ggplot2::geom_text( ggplot2::aes(label = scales::percent(media, accuracy = 1)),
@@ -378,6 +378,101 @@ Graficar <- R6::R6Class(
       size = 12, fontface = "bold", color = "black")
       return(self$grafica)
     },
+    #' Graficar piramide
+    #' Necesario hacer cruce de rango edad por sexo
+    #' @param x Variable en el eje x.
+    #' @return Objeto `ggplot`.
+    #' @ examples
+    #' g$contar_variables_porGrupos(variables = c("rango_edad"),grupos = c("sexo"), confint = F)
+    #' g$graficar_piramide()
+    graficar_piramide = function(cantidad_puntos = 30, tam_punto = 6,
+      tam_texto_etiqueta_porcentaje = 6,
+      separacion_texto = 1.5,
+      espaciado =  c(1, 1), 
+      tam_texto_rango_edad = 6){
+      
+        #Parámetros fijos
+      grupo_izquierda <- "F"
+      grupo_derecha   <- "M"
+      columna_categoria <- "respuesta"
+      columna_grupo <- "sexo"
+      columna_pct <- "media"
+      fuente <- "Montserrat"
+      titulo <- "Distribución poblacional por sexo"
+      mostrar_etiquetas <- TRUE
+      niveles_respuesta <- (base::unique(g$tbl$respuesta))
+      colores_personalizados <- stats::setNames(c("#94D0CC", "#B49FCC"),
+                                   c(grupo_izquierda, grupo_derecha))
+
+      # --- 3. Expandir puntos ---
+      bd_expandido <- self$tbl %>%
+        dplyr::filter(.data[[columna_grupo]] %in% c(grupo_izquierda, grupo_derecha)) %>%
+        dplyr::mutate(
+          grupo = .data[[columna_grupo]],
+          categoria = base::factor(.data[[columna_categoria]],
+            levels = base::rev(niveles_respuesta %||% base::unique(.data[[columna_categoria]]))),
+            puntos = base::round(.data[[columna_pct]] * cantidad_puntos)) %>%
+        dplyr::filter(puntos > 0) %>%
+        tidyr::uncount(puntos, .remove = FALSE) %>%
+        dplyr::group_by(categoria, grupo) %>%
+        dplyr::mutate(
+          fila = dplyr::row_number(),
+          x = dplyr::if_else(grupo == grupo_izquierda, -fila, fila),
+          etiqueta = dplyr::if_else(
+            fila == base::max(fila),
+            base::paste0(base::round(100 * dplyr::first(.data[[columna_pct]]), 1), "%"), 
+            NA_character_)) %>%
+        dplyr::ungroup()
+      
+      # --- 4. Etiquetas del centro ---
+      etiquetas_centro <- bd_expandido %>%
+        dplyr::distinct(categoria) %>%
+        dplyr::mutate(x = 0, y = categoria)
+      # --- 5. Colores --
+      colores_usar <- colores_personalizados %||%
+        stats::setNames(c("#94D0CC", "#B49FCC"), c(grupo_izquierda, grupo_derecha))
+
+      x_max <- base::max(base::abs(bd_expandido$x)) + 4 # margen de 2 puntos de ancho
+      
+      g_piramide <- ggplot2::ggplot(bd_expandido, ggplot2::aes(x = x, y = categoria, color = grupo)) +
+        ggplot2::geom_point(size = tam_punto, alpha = 0.8) + 
+        ggplot2::scale_color_manual(values = colores_usar, name = NULL) +
+        ggplot2::scale_x_continuous(
+          limits = c(-x_max, x_max),
+          breaks = NULL,
+          expand = c(0, 0)) +
+        ggplot2::scale_y_discrete(position = "right", expand = expansion(mult = espaciado)) +
+        ggplot2::geom_text(
+          data = etiquetas_centro,
+          aes(x = 0, y = y, label = y),
+          inherit.aes = FALSE,
+          size = tam_texto_rango_edad,
+          hjust = 0.5,
+          vjust = 0.5,
+          family = fuente,
+          color = "black") +
+        ggplot2::geom_vline(xintercept = 0, color = "gray70", linetype = "dotted", linewidth = 0.3) +
+        ggplot2::theme_minimal(base_family = fuente) +
+        ggplot2::labs(title = " ", x = NULL, y = NULL) +
+        ggplot2::theme(
+          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5, size = 10, family = fuente),
+          axis.text.x = ggplot2::element_blank(),
+          axis.text.y = ggplot2::element_blank(),
+          panel.grid = ggplot2::element_blank(),
+          legend.position = "top",
+          legend.text = ggplot2::element_text(size = 9, family = fuente)) +
+        ggplot2::geom_text(
+          ggplot2::aes(
+            label = etiqueta,
+            hjust = dplyr::if_else(grupo == grupo_izquierda, 1.1, -0.1)),size = tam_texto_etiqueta_porcentaje,
+            na.rm = TRUE,
+            family = fuente,
+            color = "black",
+            nudge_x = dplyr::if_else(
+              bd_expandido$grupo == grupo_izquierda, -separacion_texto, separacion_texto))
+      return(g_piramide)
+    },
+
 
     #' Graficar lollipops sin multirespuesta
     #'

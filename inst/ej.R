@@ -41,8 +41,8 @@ colores <- tibble::tribble(~respuesta, ~color,
 
 
 
-
-g <- Encuesta$new(diseno = encuesta_demo$muestra$diseno,
+rm(g)
+g <- Encuesta$new(diseno = diseno_demo,
                 diccionario = dicc,
                 colores = colores,
                 color_principal = "pink",
@@ -285,13 +285,12 @@ g$
 g$tbl
 
 
-
+diseno_demo$variables |> glimpse()
 # cruce -------------------------------------------------------------------
 
-g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio"),
-                             grupos = c("sexo", "region"), confint = F)
+g$contar_variables_porGrupos(variables = c("rango_edad"),
+                             grupos = c("sexo"), confint = F)
 g$tbl
-
 
 # multirespuesta ----------------------------------------------------------
 
