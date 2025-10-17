@@ -321,7 +321,7 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x){
+    graficar_barras_h = function(x, y = "media"){
       self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))) +
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color)) +
         ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y))),
