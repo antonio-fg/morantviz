@@ -229,3 +229,20 @@ g$contar_variable_multirespuesta(variable = "problema_inseguridad",
                                  confint = F)
 
 g$tbl
+
+# graficar waffle ----------------------------------  
+
+g$
+  contar_variables_porGrupos(variables = c("conoce_pm_astiazaran","conoce_pm_delrio","conoce_pm_lia", "conoce_pm_javier"),
+                             grupos = c("region"), confint = F)$
+  filtrar_respuesta(valor = c("Sí"))$
+  pegar_diccionario()$
+  pegar_color()
+
+g$preparar_datos_waffle_base(
+  col_base = "nombre",   # eje Y
+  col_grupo = "region", # eje X
+  valor = "media"      # valor numérico
+)
+
+g$graficar_waffle_base("Conocimiento de personajes región")

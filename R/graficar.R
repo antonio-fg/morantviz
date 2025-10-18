@@ -373,6 +373,174 @@ Graficar <- R6::R6Class(
         lemon::scale_y_symmetric(labels = function(x) scales::percent(abs(x), accuracy = 1)) +
         ggplot2::labs(fill = NULL, color = NULL)
       return(self$grafica)
+    },
+
+    
+    #' Preparar datos para gráfico de waffle base
+    #'
+    #' Reformatea la tabla interna para mostrar servicios públicos por región
+    #' en un formato largo y genera coordenadas para los “squircles”.
+    #' @param col_base,           columna fija (eje Y)
+    #' @param  valor = "valor",   valor resultante
+    #' @param col_grupo,          Eje X (ej. "region")
+
+    #' @return Actualiza self$tbl con los datos preparados.
+    preparar_datos_waffle_base = function(
+      col_base,        
+      col_grupo,       
+      valor = "media"  
+    ) {
+      stopifnot(!is.null(self$tbl))
+      df <- self$tbl
+
+      # --- Validación de columnas ---
+      if (!all(c(col_base, col_grupo, valor) %in% names(df))) {
+        stop("Algunas columnas indicadas no existen en self$tbl.")
+      }
+
+      # --- Calcular niveles de ejes ---
+      niveles_x <- df %>%
+        distinct(!!rlang::sym(col_grupo)) %>%
+        pull(!!rlang::sym(col_grupo))
+
+      niveles_y <- df %>%
+        group_by(!!rlang::sym(col_base)) %>%
+        summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
+        arrange(desc(promedio)) %>%
+        pull(!!rlang::sym(col_base))
+
+      # --- Agregar coordenadas y etiquetas ---
+      df <- df %>%
+        mutate(
+          grupo = stringr::str_wrap(!!rlang::sym(col_grupo), 15),
+          base_y = stringr::str_wrap(!!rlang::sym(col_base), 35),
+          etiqueta = scales::percent(!!rlang::sym(valor), accuracy = 1),
+          grupo = factor(grupo, levels = niveles_x),
+          base_y = factor(base_y, levels = rev(niveles_y)),
+          col = as.numeric(grupo),
+          row = as.numeric(base_y),
+          fill_id = !!rlang::sym(valor),
+          .id = dplyr::row_number()
+        )
+
+      # --- Crear la forma base tipo “squircle” ---
+      n_puntos <- 100
+      a <- 0.45; b <- 0.45; exp <- 9
+      theta <- seq(0, 2 * pi, length.out = n_puntos)
+
+      base_shape <- tibble::tibble(
+        x_unit = a * sign(cos(theta)) * abs(cos(theta))^(2 / exp),
+        y_unit = b * sign(sin(theta)) * abs(sin(theta))^(2 / exp),
+        vertex_id = seq_along(theta)
+      )
+
+      df_base <- df %>% mutate(.id = row_number())
+
+      df_squircles <- tidyr::crossing(df_base, base_shape) %>%
+        mutate(
+          x = col + x_unit,
+          y = row + y_unit
+        ) %>%
+        arrange(.id, vertex_id)
+
+      # --- Crear tabla base para etiquetas (centradas) ---
+      df_etiquetas <- df %>%
+        dplyr::distinct(.id, grupo, base_y, etiqueta, col, row, fill_id) %>%
+        dplyr::mutate(row_pos = row)
+
+      # --- Agregar al tibble completo (sin usar listas) ---
+      df_final <- df_squircles %>%
+        left_join(df_etiquetas, by = c(".id", "grupo", "base_y", "col", "row", "fill_id", "etiqueta"))
+
+      # --- Guardar en self$tbl ---
+      self$tbl <- df_final
+
+      invisible(self)
+    },
+
+
+    #' Graficar Heatmap
+    #'
+    #' Genera la visualización tipo squircle para mostrar porcentajes
+    #'
+    #' @param titulo Texto para el título del gráfico. Por defecto: "Gráfico tipo matriz por grupo".
+    #' @param subtitulo Texto opcional para el subtítulo del gráfico. Por defecto: NULL.
+    #' @param nombre_x Etiqueta del eje X (horizontal). Por defecto: "Región".
+    #' @param nombre_y Etiqueta del eje Y (vertical). Por defecto: "Categoría base".
+    #' @param nombre_valor Nombre de la leyenda de colores (fill). Por defecto: "Porcentaje".
+    #' @param escala_color Vector con colores para el gradiente. Debe tener dos elementos: low y high.
+    #' 
+    #' @return Objeto ggplot.
+    graficar_waffle_base = function(
+      titulo = "Gráfico tipo matriz por grupo",
+      subtitulo = NULL,
+      nombre_x = "Región",
+      nombre_y = "Categoría base",
+      nombre_valor = "Porcentaje",
+      escala_color = c(low = "#cbb2f5", high = "#6a41c6")
+    ) {
+      stopifnot(!is.null(self$tbl))
+
+        df <- self$tbl
+
+      # --- Verificar que tiene lo necesario ---
+      if (!all(c("x", "y", "fill_id", "col", "row", "etiqueta", "grupo", "base_y") %in% names(df))) {
+        stop("Los datos no están preparados. Usa primero preparar_datos_matriz_wafle().")
+      }
+      
+      # --- Calcular los niveles de los ejes a partir de los factores ---
+      niveles_x <- levels(df$grupo)
+      niveles_y <- levels(df$base_y)
+
+      # --- Gráfico principal ---
+      self$grafica <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, group = .id)) +
+        ggplot2::geom_polygon(ggplot2::aes(fill = fill_id), color = "white") +
+        ggplot2::geom_text(
+          ggplot2::aes(x = col, y = row_pos, label = etiqueta),
+          size = 10,
+          color = "black",
+          family = "sans",
+          vjust = 0.5,  # centrado vertical
+          hjust = 0.5,   # centrado horizontal
+          inherit.aes = FALSE
+        ) +
+        ggplot2::scale_fill_gradient(
+          low = escala_color["low"],
+          high = escala_color["high"],
+          name = nombre_valor
+        ) +
+        ggplot2::scale_x_continuous(
+          breaks = seq_along(niveles_x),
+          labels = niveles_x,
+          position = "top"
+        ) +
+        ggplot2::scale_y_continuous(
+          breaks = seq_along(niveles_y),
+          labels = rev(niveles_y)
+        ) +
+        ggplot2::labs(
+          title = titulo,
+          subtitle = subtitulo,
+          caption = self$tbl$pregunta[1],
+          x = nombre_x,
+          y = nombre_y
+        ) +
+        tema_morant() +
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(
+            size = 14,          
+            face = "bold",      
+            hjust = 0.5,        
+            vjust = 2     
+          ),
+          panel.grid = ggplot2::element_blank(),
+          axis.text.x = ggplot2::element_text(face = "bold", size = 12),
+          axis.text.y = ggplot2::element_text(size = 14, face = "bold"),
+          plot.title = ggplot2::element_text(face = "bold", size = 16, hjust = 0.5),
+          plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5)
+        )
+
+      return(self$grafica)
     }
   )
 )
