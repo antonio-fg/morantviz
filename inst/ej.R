@@ -73,8 +73,7 @@ g$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
 
 g$graficar_barras_h(x = "respuesta") +
-  facet_wrap(~nombre)+
-  tema_morant(base_family = "KuFam")
+  facet_wrap(~nombre)
 
 ####ejemplo barras verticales
 g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
@@ -98,16 +97,12 @@ g$pegar_color()
 g$graficar_barras_v(x = "respuesta") 
 
 
-g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
-g$tbl
-g$filtrar_respuesta(variable = "respuesta", valor ="Sí")
+
+g$contar_variables(variables = "conoce_pm_javier", confint = T)
 g$tbl
 g$pegar_color()
 g$tbl
-g$graficar_gauge() +
-  labs(title = "ejemplo", caption =  "caption")+
-  theme(plot.title = element_text(family = "KuFam", size = 25))
-
+g$graficar_gauge()
 
 g$contar_variables(variables = c(
   "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
@@ -144,6 +139,22 @@ g$tbl
 
 g$graficar_waffle() +
   tema_morant(base_family = "KuFam")
+
+
+######Pirámide
+g$contar_variables_porGrupos(variables = c("rango_edad"),
+                             grupos = c("sexo"), confint = F)
+g$tbl<-g$tbl |> 
+  mutate(respuesta = 
+    case_when(respuesta == "18A24" ~ "18-24",
+  respuesta == "25A39" ~ "25-39",
+  respuesta == "40A59" ~ "40-59",
+  respuesta == "60YMAS" ~ "60+",
+ TRUE ~respuesta))
+
+  
+g$graficar_piramide(espaciado = c(0.05,0.05))
+
 
 # opinión barras divergente ------------------------------------------------
 
