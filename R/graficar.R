@@ -335,22 +335,23 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
     #' Graficar Bloque
+    #'  
+    #' Permite mostrar distintos tipos de métricas (media, n, porcentaje) dentro de cada bloque.
     #'
-    #' @param titulo Título principal de la gráfica.
-    #'   Tipo: character. Default: NULL (sin título).
+    #' @param freq Character. Indica la variable que se usará para determinar el tipo de los bloques.
+    #'   Puede ser `"media"`, `"n"` o `"pct"`. Por defecto es `"media"`.
     #'
-    #' @param subtitulo Subtítulo o descripción adicional.
-    #'   Tipo: character. Default: NULL (sin subtítulo).
-    #'    
     #' @return
     #' Objeto `ggplot2::ggplot`. Se almacena en `self$grafica` y se retorna
     #' para permitir manipulaciones adicionales o guardado.
-    graficar_bloque = function(titulo = NULL, subtitulo = NULL) {         
+    graficar_bloque = function(freq = "media") {         
       # Crear la gráfica
-      self$grafica <- ggplot(self$tbl, aes(area = media, fill = color)) +
+         # Crear símbolo una sola vez
+      
+      self$grafica <- ggplot(self$tbl, aes(area = !!rlang::sym(freq), fill = color)) +
         geom_treemap(color = "white", size = 2) +
         geom_treemap_text(
-          aes(label = glue::glue("{respuesta} {scales::percent(media, 1)}")),
+          aes(label = paste0(respuesta, " ", scales::percent(!!rlang::sym(freq), accuracy = 1))),
           color = "white",
           place = "centre",
           grow = TRUE,
@@ -360,11 +361,7 @@ Graficar <- R6::R6Class(
           size = 10
         ) +
         scale_fill_identity() +
-        labs(
-          title = titulo,
-          subtitle = subtitulo,
-          caption = self$tbl$pregunta[1]
-        )+
+        labs(caption = self$tbl$pregunta[1]) +
         self$tema
       return(self$grafica)      
     },

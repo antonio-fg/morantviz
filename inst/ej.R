@@ -241,7 +241,7 @@ g$contar_variable_multirespuesta(variable = "problema_inseguridad",
 g$tbl
 
 #Graficar Bloques Con Facet-------------------------------
-
+library("stringr")
 g$contar_variables_porGrupos(variables = c("identificacion_partido"),
                              grupos = c("sexo"), confint = F)
 g$pegar_color()
@@ -250,14 +250,15 @@ g$pegar_diccionario()
 
 library("treemapify")
 
-g$graficar_bloque() +
-  facet_wrap(~sexo)
+g$graficar_bloque(freq = "media") +
+  facet_wrap(~sexo) +
+  labs(title = "Grafica de bloques de identificación de partidos por sexo") 
 
 #Graficar Bloques -------------------------------
-library("stringr")
+
 g$contar_variables(variables = c("identificacion_partido"))
 g$pegar_color()
 g$pegar_diccionario()
 
-g$graficar_bloque()
+g$graficar_bloque(freq = "media")
 
