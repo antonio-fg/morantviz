@@ -35,13 +35,7 @@ colores <- tibble::tribble(
   "Muy buena",     "#2ecc71",
   "Muy mala",      "#e74c3c",
   "Regular",       "#f1c40f",
-  "Ns/Nc",         "#95a5a6",
-  "M",             "#2980b9",
-  "F",             "#8e44ad",
-  "18A24",         "#16a085",
-  "25A39",         "#f39c12",
-  "40A59",         "#d35400",
-  "60YMAS",        "#2c3e50"
+  "Ns/Nc",         "#95a5a6"
 )
 
 
@@ -59,6 +53,28 @@ g$
   contar_variables(variables = c("problema_principal"), confint = F)$
   filtrar_respuesta(valor = c("Falta de agua","Falta de servicios de salud","Falta de alumbrado","Tráfico vehicular"))$
   pegar_diccionario()$
-  graficar_lineas(x ="respuesta")
+  pegar_color()$
+  graficar_lineas(x ="respuesta") 
 
 
+
+
+################################### graficar varias lineas de clasificacion ###################################
+
+### Definimos el color para la columna que queramos editar, en este caso nombre
+colores_candidatos <- tibble::tribble(
+  ~nombre,                ~color,
+  "Astiazarán",           "#9D7AD2",  # morado
+  "Del Río",              "#27ae60",  # verde
+  "Lía Limón",            "#e74c3c",  # rojo
+  "Javier López Casarín", "#f1c40f"   # amarillo
+)
+
+# modificamos los colores que se habían modificado
+g$colores <- colores_candidatos
+
+g$
+  contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
+  pegar_diccionario()$
+  pegar_color(columna ="nombre")$ # Solo pegamos con respecto a la columna que queremos
+  graficar_lineas(x ="respuesta") 
