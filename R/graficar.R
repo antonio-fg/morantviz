@@ -294,65 +294,14 @@ Graficar <- R6::R6Class(
     #' Pegar colores
     #'
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
+    #' Volví a utilizar la función inicial de pegar_color()
     #' @examples
-    #' g$pegar_color()
-    #pegar_color = function(){
-    #  self$tbl <- self$tbl |>
-    #    dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
-    #    dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
-    #  invisible(self)
-    #},
-    
-  pegar_color = function() {
-
-  if (is.null(self$colores)) {
-    # Caso 1: sin paleta definida → usa color principal para todas
-    self$tbl <- self$tbl |>
-      dplyr::mutate(color = self$color_principal)
-
-  } else if (is.vector(self$colores) && !is.null(names(self$colores))) {
-    #  Caso 2: vector nombrado → convertir a tibble
-    paleta_extendida <- tibble::tibble(
-      respuesta = names(self$colores),
-      color = unname(self$colores)
-    )
-
-    self$tbl <- self$tbl |>
-      dplyr::mutate(respuesta = as.character(respuesta)) |>
-      dplyr::left_join(
-        paleta_extendida |> dplyr::mutate(respuesta = as.character(respuesta)),
-        by = "respuesta"
-      ) |>
-      dplyr::mutate(
-        color = dplyr::if_else(is.na(.data$color), self$color_principal, .data$color)
-      )
-
-  } else if (tibble::is_tibble(self$colores)) {
-    #  Caso 3: tibble → unir directamente
-    if (!all(c("respuesta", "color") %in% names(self$colores))) {
-      stop(" El tibble `colores` debe tener columnas `respuesta` y `color`.")
-    }
-
-    paleta_extendida <- self$colores |> 
-      dplyr::mutate(respuesta = as.character(respuesta))
-
-    self$tbl <- self$tbl |>
-      dplyr::mutate(respuesta = as.character(respuesta)) |>
-      dplyr::left_join(paleta_extendida, by = "respuesta") |>
-      # aquí el cambio clave: aseguramos la existencia de color
-      dplyr::mutate(
-        color = dplyr::if_else(
-          is.na(.data$color),
-          self$color_principal,
-          .data$color
-        )
-      )
-  } else {
-    stop(" `colores` debe ser NULL, vector nombrado o tibble con columnas `respuesta` y `color`.")
-  }
-
-  invisible(self)
-  },
+    pegar_color = function(){
+      self$tbl <- self$tbl |>
+        dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
+        dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
+      invisible(self)
+    },
 
 
     #' Agregar saldo por grupo
@@ -360,7 +309,7 @@ Graficar <- R6::R6Class(
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
-    agregar_saldo = function(por){ 
+    agregar_saldo = function(por, freq = "media"){ 
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(!!rlang::sym(freq)), .by = !!rlang::sym(por))
       invisible(self)
@@ -387,18 +336,32 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
-    # Lineas 
-    graficar_lineas_clasificacion = function(
-      x_var = "respuesta",
-      y_var = "media",
-      titulo = "",
-      subtitulo = "",
-      eje_x = "",
-      caption="",
-      colores = self$color_principal
+
+################################### Graficar Líneas  ###################################
+
+#' Genera una gráfica de líneas para una variable
+#'
+#' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
+#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
+#' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
+#'
+#' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
+#' y se aplica el tema corporativo definido en la clase.
+#'
+#'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
+#' `freq` Nombre de la columna numérica que define el eje Y 
+#'        (por defecto "media").
+#'
+#' @return La gráfica de líneas
+#'
+
+    graficar_lineas = function(
+      x,
+      freq = "media"
       ){
-        group_var = "codigo"
-        aes_args <- aes_string(x = x_var, y = y_var, group = group_var, color = group_var)
+        colores = self$color_principal
+        group = "codigo"  
+        aes_args <- aes(x = !!sym(x), y = !!sym(freq), group = !!sym(group), color = group)
         self$grafica <- self$tbl  |> ggplot(aes_args) +
           geom_line(linewidth = 1,color = self$color_principal) +
           geom_point(size = 3,color = self$color_principal) +
@@ -408,28 +371,18 @@ Graficar <- R6::R6Class(
               vjust = -1,color = "black") +
           scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                                     limits = c(0,1)) +
-          theme_minimal(base_size = 14) +
-          labs(
-            title = titulo,
-            subtitle = subtitulo,
-            x = eje_x,
-            y = NULL,
-            caption = caption) +
-          theme(
-            panel.border = element_blank(),
-            axis.ticks = element_blank(),
-            plot.title = element_text(size = 18, face = "bold"),
-            plot.subtitle = element_text(size = 14, color = "gray40", margin = margin(b = 10)),  
-            plot.caption = element_text(size = 12, color = "gray40", hjust = 1),
-            strip.text = element_text(size = 16, face = "bold")  
-          ) + self$tema
-          
+          labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                   "Sin pregunta definida", 
+                   self$tbl$pregunta[1]))+
+          self$tema
       return(self$grafica)
     },
 
+  
 
-    
-
+#############################
+  
+  
     #' Graficar barras divergentes
     #'
     #' Genera un gráfico divergente de opinión (positivas vs negativas).
@@ -490,7 +443,8 @@ Graficar <- R6::R6Class(
 #'   color_principal = "pink",
 #'   tema = tema_morant()
 #' )
-#'
+#' 
+#
 #' g$saldos_opinion(
 #'   sufijo_opinion = "opinion_pm",
 #'   cat_ns_nc = "Ns/Nc",
@@ -513,61 +467,6 @@ Encuesta <- R6::R6Class(
     initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema){
       super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
-
-
-  
-  
-    #' @param columna_valor Nombre de la columna de la que se calculará el máximo (por defecto es 'media').
-    #' @return Modifica el objeto self$tbl, agregando la columna 'Maximo_Global'.
-    #' # La lógica de mutate calcula el máximo de la columna especificada
-    # y lo asigna a una nueva columna en el data frame de la clase (self$tbl).
-  
-
-    ################################### Función máximo  ###################################
-    
-  color_maximo = function(col_max) {
-    
-  #  Calcula el valor máximo
-  valor_maximo <- max(self$tbl$media, na.rm = TRUE)
-
-  #Esta especificado por el usuario ahora, pero podria estar definido en
-  #el script de colores 
-
-  # Modifica directamente el color de la fila con ese máximo
-  self$tbl <- self$tbl |>
-    dplyr::mutate(
-      color = dplyr::if_else(
-        media == valor_maximo,
-        col_max,
-        color
-      )
-    )
-
-  invisible(self)
-  },
-
-degradado_continuo = function(colores_base,resaltar_maximo = TRUE) {
-
-
-  #  Crear función continua de color según el rango de 'media'
-  escala_color <- scales::col_numeric(
-    palette = colores_base,
-    domain = range(self$tbl$media, na.rm = TRUE)
-  )
-
-  #  Asignar color continuo a cada valor de 'media'
-  self$tbl <- self$tbl |>
-    dplyr::mutate(color = escala_color(media))
-
-  #  Si se desea, resaltar el máximo en un color especial
-
-  col_max <- "#7ad29d" #color temporal
-  if (isTRUE(resaltar_maximo)) {
-    self$color_maximo(col_max)
-  }
-
-  invisible(self)
-},
 
 
     #' Graficar saldos de opinión y conocimiento
