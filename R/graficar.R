@@ -35,6 +35,9 @@
 
 Graficar <- R6::R6Class(
   "Graficar",
+  private = list(
+    pesos = NULL
+  ),
   public = list(
     #' @field tbl Tibble con los resultados procesados.
     tbl = NULL,
@@ -42,6 +45,8 @@ Graficar <- R6::R6Class(
     grafica = NULL,
     #' @field diseno Objeto survey design (de `survey`).
     diseno = NULL,
+    #' @field bd base de datos a analizar.
+    bd = NULL,
     #' @field diccionario Diccionario de variables y etiquetas.
     diccionario = NULL,
     #' @field colores Tabla de colores por respuesta.
@@ -62,8 +67,15 @@ Graficar <- R6::R6Class(
     #' @examples
     #' g <- Graficar$new(diseno, diccionario, colores, "pink", tema_morant())
     #'
-    initialize = function(diseno, diccionario, colores, color_principal, tema) {
-      self$diseno <- diseno
+    initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema) {
+      if(!is.null(diseno)) {
+        self$diseno <- diseno
+        private$pesos <- T
+      }
+      if(!is.null(bd)) {
+        self$bd <- bd |> tibble::as_tibble()
+        private$pesos <- F
+      }
       self$diccionario <- diccionario
       self$colores <- colores
       self$tema <- tema
@@ -80,16 +92,73 @@ Graficar <- R6::R6Class(
     #' @examples
     #' g$contar_variables(c("conoce_pm_astiazaran", "conoce_pm_delrio"), confint = FALSE)
 
-    contar_variables = function(variables, confint){
-      self$tbl <- contar_vars_pesos(
-        variables = variables,
-        confint = confint,
-        diccionario = self$diccionario,
-        diseno = self$diseno
-      )
+    contar_variables = function(variables, confint = F, pct = T){
+      if(private$pesos){
+        self$tbl <- contar_vars_pesos(
+          variables = variables,
+          confint = confint,
+          diseno = self$diseno
+        )
+      }
+
+      if(!private$pesos){
+        self$tbl <- contar_vars(
+          bd = self$bd,
+          variables = variables,
+          pct = pct
+        )
+      }
+
       invisible(self)
     },
 
+    #' Contar variables ponderadas por grupos
+    #'
+    #' Llama a `contar_vars_porGrupos_pesos` para obtener proporciones y medias.
+    #'
+    #' @param variables Vector de nombres de variables.
+    #' @param grupos Vector de grupos.
+    #' @param confint Lógico; si calcular intervalos de confianza.
+    #' @return La tabla interna (`self$tbl`) se actualiza.
+    #' @examples
+    #' g$contar_variables_porGruos(c("conoce_pm_astiazaran", "conoce_pm_delrio"), grupos = "region", confint = FALSE)
+    #'
+    contar_variables_porGrupos = function(variables, grupos, confint){
+      if(private$pesos){
+        self$tbl <- contar_vars_porGrupos_pesos(
+          variables = variables,
+          grupos = grupos,
+          confint = confint,
+          diseno = self$diseno
+        )
+      }
+
+      invisible(self)
+    },
+    #' Contar variable multirespuesta
+    #'
+    #' Llama a `contar_variable_multirespuesta` para obtener proporciones de una variable multirespuesta con algún separador.
+    #'
+    #' @param variable Nombre de la variable multirespuesta
+    #' @param sep Separador de las respuestas elegidas.
+    #' @param confint Lógico; si calcular intervalos de confianza.
+    #' @return La tabla interna (`self$tbl`) se actualiza.
+    #' @examples
+    #' g$contar_variable_multirespuesta(variable = "problema_inseguridad", sep = "|", confint = F)
+    #'
+    contar_variable_multirespuesta = function(variable, sep, confint){
+      self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
+                                  variable = variable,
+                                  sep = sep, confint = confint)
+
+      invisible(self)
+    },
+    calcular_pct = function(var = "n", grupo = "codigo"){
+      self$tbl <- self$tbl |>
+          mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))
+
+      invisible(self)
+    },
     #' Filtrar respuestas específicas
     #'
     #' @param variable Nombre de la variable a filtrar.
@@ -109,12 +178,13 @@ Graficar <- R6::R6Class(
     #'
     #' @param columna Columna a reordenar.
     #' @param tipo Tipo de orden: `"manual"`, `"asc"`, `"desc"`, `"suma"`.
+    #' @param freq Con respecto a qué columna es el criterio para ordenar
     #' @param ... Niveles en orden manual si `tipo = "manual"`.
     #' @return La tabla interna (`self$tbl`) se actualiza.
     #' @examples
     #' g$reordenar_columna("nombre", "asc")
     #' g$reordenar_columna("respuesta", "manual", c("Sí", "No"))
-    reordenar_columna = function(columna, tipo, ...){
+    reordenar_columna = function(columna, tipo, freq = "media",...){
       match.arg(tipo, choices = c("manual", "asc", "desc", "suma"))
 
       if(tipo == "manual"){
@@ -125,14 +195,14 @@ Graficar <- R6::R6Class(
 
       if(tipo %in% "desc"){
         self$tbl <- self$tbl |>
-          dplyr::arrange(dplyr::desc(media)) |>
+          dplyr::arrange(dplyr::desc(!!rlang::sym(freq))) |>
           dplyr::mutate(!!rlang::sym(columna) :=
                           forcats::fct_inorder(!!rlang::sym(columna)))
       }
 
       if(tipo == "asc"){
         self$tbl <- self$tbl |>
-          dplyr::arrange(media) |>
+          dplyr::arrange(!!rlang::sym(freq)) |>
           dplyr::mutate(!!rlang::sym(columna) :=
                           forcats::fct_inorder(!!rlang::sym(columna)))
       }
@@ -140,7 +210,7 @@ Graficar <- R6::R6Class(
       if(tipo == "suma"){
         self$tbl <- self$tbl |>
           dplyr::mutate(!!rlang::sym(columna) :=
-                          forcats::fct_reorder(!!rlang::sym(columna), media, .fun = sum))
+                          forcats::fct_reorder(!!rlang::sym(columna), !!rlang::sym(freq), .fun = sum))
       }
 
       invisible(self)
@@ -177,7 +247,7 @@ Graficar <- R6::R6Class(
     #' @param opcion Valor de la categoría Regular.
     #' @examples
     #' g$partir_regular("Regular")
-    partir_regular = function(opcion){
+    partir_regular = function(opcion, freq = "media"){
       self$tbl <- self$tbl |>
         dplyr::filter(respuesta != !!opcion) |>
         dplyr::bind_rows(
@@ -185,10 +255,11 @@ Graficar <- R6::R6Class(
             purrr::map_dfr(~{
               self$tbl |>
                 dplyr::filter(respuesta == !!opcion) |>
-                dplyr::mutate(media = .x*media/2)
+                dplyr::mutate(!!rlang::sym(freq) := .x*!!rlang::sym(freq)/2)
             })
         ) |>
-        dplyr::mutate(respuesta2 = dplyr::if_else(media < 0 & respuesta == "Regular", "Regular2", respuesta))
+        dplyr::mutate(respuesta2 = dplyr::if_else(!!rlang::sym(freq) < 0 & respuesta == "Regular", "Regular2", respuesta))
+
       invisible(self)
     },
 
@@ -196,10 +267,10 @@ Graficar <- R6::R6Class(
     #'
     #' @param negativo Vector de respuestas negativas.
     #' @examples
-    #' g$cambiarSigno_media(c("Mala", "Muy mala"))
-    cambiarSigno_media = function(negativo){
+    #' g$cambiarSigno_freq(c("Mala", "Muy mala"))
+    cambiarSigno_freq = function(negativo, freq = "media"){
       self$tbl <- self$tbl |>
-        dplyr::mutate(media = dplyr::if_else(respuesta %in% !!negativo, -media, media))
+        dplyr::mutate(!!rlang::sym(freq) := dplyr::if_else(respuesta %in% !!negativo, -!!rlang::sym(freq), !!rlang::sym(freq)))
       invisible(self)
     },
 
@@ -208,13 +279,13 @@ Graficar <- R6::R6Class(
     #' @param regular Valor de la categoría Regular.
     #' @examples
     #' g$etiquetar_regular("Regular").
-    etiquetar_regular = function(regular){
+    etiquetar_regular = function(regular, freq){
       self$tbl <- self$tbl |>
         dplyr::mutate(
           etiqueta = dplyr::case_when(
-            media < 0 & respuesta == !!regular ~ "",
-            respuesta == !!regular ~ scales::percent(media*2, accuracy = 1),
-            TRUE ~ scales::percent(abs(media), accuracy = 1)
+            !!rlang::sym(freq) < 0 & respuesta == !!regular ~ "",
+            respuesta == !!regular ~ scales::percent(!!rlang::sym(freq)*2, accuracy = 1),
+            TRUE ~ scales::percent(abs(!!rlang::sym(freq)), accuracy = 1)
           )
         )
       invisible(self)
@@ -240,7 +311,7 @@ Graficar <- R6::R6Class(
     #' g$agregar_saldo("nombre")
     agregar_saldo = function(por, freq = "media"){ 
       self$tbl <- self$tbl |>
-        dplyr::mutate(saldo = sum(media), .by = !!rlang::sym(por))
+        dplyr::mutate(saldo = sum(!!rlang::sym(freq)), .by = !!rlang::sym(por))
       invisible(self)
     },
 
@@ -250,10 +321,10 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x){
-      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = media)) +
+    graficar_barras_h = function(x, y = "media"){
+      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))) +
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color)) +
-        ggplot2::geom_text(ggplot2::aes(label = scales::percent(media)),
+        ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y))),
                            size = 5, hjust = -.1,
                            family = self$tema$text$family) +
         ggplot2::coord_flip() +
@@ -366,9 +437,9 @@ Graficar <- R6::R6Class(
     #' g$graficar_barras_divergente("Regular",
     #'                              positivas = c("Buena", "Muy buena"),
     #'                              negativas = c("Mala", "Muy mala"))
-    graficar_barras_divergente = function(regular, positivas, negativas){
+    graficar_barras_divergente = function(regular, positivas, negativas, y = "media"){
       self$grafica <- self$tbl |>
-        ggplot2::ggplot(ggplot2::aes(x = nombre, y = media,
+        ggplot2::ggplot(ggplot2::aes(x = nombre, y = !!rlang::sym(y),
                                      group = factor(respuesta2, c(regular, paste0(regular,"2"), positivas, negativas)))) +
         ggchicklet::geom_chicklet(ggplot2::aes(fill = respuesta, color = respuesta)) +
         ggfittext::geom_fit_text(
@@ -512,7 +583,7 @@ Encuesta <- R6::R6Class(
         pegar_color()$
         reordenar_columna(columna = "respuesta", tipo = "manual", c(positivas, regular, negativas))$
         partir_regular(opcion = regular)$
-        cambiarSigno_media(negativo = negativas)$
+        cambiarSigno_freq(negativo = negativas)$
         reordenar_columna(columna = "nombre", tipo = "suma")$
         etiquetar_regular(regular = regular)
 
