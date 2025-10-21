@@ -172,3 +172,8 @@ ns_nc
 
 op + conoc + ns_nc + plot_layout(ncol = 3, widths = c(3, 1, 1))
 
+
+# multirespuesta ----------------------------------------------------------
+
+g$contar_variable_multirespuesta(variable = "problema_inseguridad", sep = "\\s\\/\\s")
+g$tbl

@@ -147,15 +147,22 @@ Graficar <- R6::R6Class(
     #' g$contar_variable_multirespuesta(variable = "problema_inseguridad", sep = "|", confint = F)
     #'
     contar_variable_multirespuesta = function(variable, sep, confint){
-      self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
-                                  variable = variable,
-                                  sep = sep, confint = confint)
+
+      if(private$pesos){
+        self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
+                                                variable = variable,
+                                                sep = sep, confint = confint)
+      } else{
+        self$tbl <- contar_multirespuesta(bd = self$bd,
+                                          variable = variable,
+                                          sep = sep)
+      }
 
       invisible(self)
     },
     calcular_pct = function(var = "n", grupo = "codigo"){
       self$tbl <- self$tbl |>
-          mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))
+        mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))
 
       invisible(self)
     },

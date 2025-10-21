@@ -13,3 +13,13 @@ contar_vars <- function(bd, variables, pct){
 }
 
 
+contar_multirespuesta <- function(bd, variable, sep = "\\s\\/\\s"){
+  bd |>
+    select(!!rlang::sym(variable)) |>
+    separate_rows(!!rlang::sym(variable), sep = sep) |>
+    mutate(!!rlang::sym(variable) := str_squish(!!rlang::sym(variable))) |>
+    count(!!rlang::sym(variable), sort = T) |>
+    mutate(pct = n/nrow(bd)) |>
+    mutate(codigo = variable) |>
+    rename(respuesta := !!rlang::sym(variable))
+}
