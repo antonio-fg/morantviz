@@ -296,10 +296,27 @@ Graficar <- R6::R6Class(
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
     #' Volví a utilizar la función inicial de pegar_color()
     #' @examples
-    pegar_color = function(){
+   # pegar_color = function(columna="respuesta"){
+   #   self$tbl <- self$tbl |>
+   #     columna_sym <- rlang::sym(columna)
+   #     dplyr::left_join(self$colores, dplyr::join_by(!!columna_sym)) |>
+   #     dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
+   #   invisible(self)
+   # },
+
+    pegar_color = function(columna = "respuesta") { 
+      columna_sym <- rlang::sym(columna)
+    
       self$tbl <- self$tbl |>
-        dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
-        dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
+        dplyr::left_join(self$colores, dplyr::join_by(!!columna_sym)) |>
+        dplyr::mutate(
+          color = dplyr::if_else(
+            is.na(.data$color),
+            self$color_principal,
+            .data$color
+          )
+        )
+      
       invisible(self)
     },
 
@@ -355,28 +372,38 @@ Graficar <- R6::R6Class(
 #' @return La gráfica de líneas
 #'
 
-    graficar_lineas = function(
+  graficar_lineas = function(
       x,
-      freq = "media"
+      freq = "media",
+      color = "color"
       ){
-        colores = self$color_principal
         group = "codigo"  
-        aes_args <- aes(x = !!sym(x), y = !!sym(freq), group = !!sym(group), color = group)
-        self$grafica <- self$tbl  |> ggplot(aes_args) +
-          geom_line(linewidth = 1,color = self$color_principal) +
-          geom_point(size = 3,color = self$color_principal) +
-          geom_text(aes(label = scales::percent(media,accuracy = 1)),
-                      size = 5, hjust = -.1,
-                      family = self$tema$text$family,
-              vjust = -1,color = "black") +
+
+        aes_args <- aes(
+          x = !!sym(x), 
+          y = !!sym(freq), 
+          group = !!sym(group), 
+          color = color   # 🔑 Usar columna self$tbl$color
+        )
+
+        self$grafica <- self$tbl |> 
+          ggplot(aes_args) +
+          geom_line(linewidth = 1) +
+          geom_point(size = 3) +
+          geom_text(aes(label = scales::percent(media, accuracy = 1)),
+                    size = 5, hjust = -.1,
+                    family = self$tema$text$family,
+                    vjust = -1, color = "black") +
           scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                                    limits = c(0,1)) +
+                             limits = c(0,1)) +
           labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
-                   "Sin pregunta definida", 
-                   self$tbl$pregunta[1]))+
+                                "Sin pregunta definida", 
+                                self$tbl$pregunta[1])) +
           self$tema
-      return(self$grafica)
+
+        return(self$grafica)
     },
+
 
 
 ################################### Grafica Sankey  ###################################
