@@ -439,6 +439,22 @@ Encuesta <- R6::R6Class(
       super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
 
+    ################################### Función máximo  ###################################
+ 
+    #' Resalta el valor máximo de una métrica 
+    #'
+    #' Esta función modifica la columna `color` de `self$tbl`, asignando 
+    #' un color especial (`col_max`) a la fila que contiene el valor máximo
+    #' de la variable indicada en `freq`.
+
+      color_maximo = function(col_max,freq="media") {
+
+      self$tbl <- self$tbl |> mutate(color = dplyr::if_else(!!rlang::sym(freq) == max(!!rlang::sym(freq)), !!col_max, color))  
+
+      invisible(self)
+      },
+
+    ##############
 
     #' Graficar saldos de opinión y conocimiento
     #'
