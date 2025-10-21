@@ -223,8 +223,8 @@ Graficar <- R6::R6Class(
     #' Pegar colores
     #'
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
+    #' Volví a utilizar la función inicial de pegar_color()
     #' @examples
-    #' g$pegar_color()
     pegar_color = function(){
       self$tbl <- self$tbl |>
         dplyr::left_join(self$colores, dplyr::join_by(respuesta)) |>
@@ -232,12 +232,13 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
+
     #' Agregar saldo por grupo
     #'
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
-    agregar_saldo = function(por){
+    agregar_saldo = function(por, freq = "media"){ 
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(media), .by = !!rlang::sym(por))
       invisible(self)
@@ -264,6 +265,53 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
+
+################################### Graficar Líneas  ###################################
+
+#' Genera una gráfica de líneas para una variable
+#'
+#' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
+#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
+#' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
+#'
+#' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
+#' y se aplica el tema corporativo definido en la clase.
+#'
+#'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
+#' `freq` Nombre de la columna numérica que define el eje Y 
+#'        (por defecto "media").
+#'
+#' @return La gráfica de líneas
+#'
+
+    graficar_lineas = function(
+      x,
+      freq = "media"
+      ){
+        colores = self$color_principal
+        group = "codigo"  
+        aes_args <- aes(x = !!sym(x), y = !!sym(freq), group = !!sym(group), color = group)
+        self$grafica <- self$tbl  |> ggplot(aes_args) +
+          geom_line(linewidth = 1,color = self$color_principal) +
+          geom_point(size = 3,color = self$color_principal) +
+          geom_text(aes(label = scales::percent(media,accuracy = 1)),
+                      size = 5, hjust = -.1,
+                      family = self$tema$text$family,
+              vjust = -1,color = "black") +
+          scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                                    limits = c(0,1)) +
+          labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                   "Sin pregunta definida", 
+                   self$tbl$pregunta[1]))+
+          self$tema
+      return(self$grafica)
+    },
+
+  
+
+#############################
+  
+  
     #' Graficar barras divergentes
     #'
     #' Genera un gráfico divergente de opinión (positivas vs negativas).
@@ -324,7 +372,8 @@ Graficar <- R6::R6Class(
 #'   color_principal = "pink",
 #'   tema = tema_morant()
 #' )
-#'
+#' 
+#
 #' g$saldos_opinion(
 #'   sufijo_opinion = "opinion_pm",
 #'   cat_ns_nc = "Ns/Nc",
@@ -344,9 +393,10 @@ Encuesta <- R6::R6Class(
     #' Inicializa la clase Encuesta
     #'
     #' @inheritParams Graficar$initialize
-    initialize = function(diseno, diccionario, colores, color_principal, tema){
-      super$initialize(diseno, diccionario, colores, color_principal, tema)
+    initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema){
+      super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
+
 
     #' Graficar saldos de opinión y conocimiento
     #'
