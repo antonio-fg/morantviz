@@ -17,9 +17,14 @@ usethis::use_readme_rmd( open = FALSE )
 # usethis::use_data(tema_morant)
 # Ejemplo -----------------------------------------------------------------
 
-library(morantviz)
+#library(morantviz)
+
+library(stringr)
+library(tidyr)
+library(ggalluvial)
 
 
+devtools::load_all(path = "../morantviz/") 
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -224,13 +229,9 @@ g$tbl
 
 g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio"),
                              grupos = c("sexo", "region"), confint = F)
-g$tbl
 
 
-# multirespuesta ----------------------------------------------------------
 
-g$contar_variable_multirespuesta(variable = "problema_inseguridad",
-                                 sep = "\\s\\/\\s",
-                                 confint = F)
 
-g$tbl
+
+
