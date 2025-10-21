@@ -307,9 +307,51 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
+
+################################### Grafica Sankey  ###################################
   
+#' Genera un diagrama de Sankey a partir de la tabla de la clase
+#'
+#' Esta función toma la tabla `self$tbl` y construye un diagrama de Sankey
+#' que muestra los flujos desde una variable de agrupación (`grupo`) hacia 
+#' las respuestas (`respuesta`), con pesos definidos por una métrica (`freq`).
+#'
+#' `grupo` Nombre de la columna que se usará como primer nodo (ej. "sexo").
+#' `freq` Nombre de la columna numérica que define el grosor de los flujos 
+#'        (por defecto "media").
+#'
+#' @return La gráfica Sankey.
+    
+  graficar_sankey = function(grupo,freq = "media"){
+  
+    sankey_df <- self$tbl %>%
+    select(grupo, respuesta, !!sym(freq))
+  
+    sankey_long <- sankey_df %>%
+    make_long(grupo, respuesta, value = !!sym(freq))
+  
+    paleta <- setNames(self$colores$color, self$colores$respuesta)
+
+    self$grafica <- ggplot(sankey_long,
+       aes(x = x, next_x = next_x,
+           node = node, next_node = next_node,
+           value = value,
+           fill = node)) +   # los flujos toman color del nodo
+    geom_sankey(flow.alpha = 0.9, color = NA) +   
+    geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
+    scale_fill_manual(values = paleta, na.value = "grey90") +  # usa paleta, gris claro para extras
+    scale_y_continuous(breaks = NULL) +
+    labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                   "Sin pregunta definida", 
+                   self$tbl$pregunta[1]))+  
+    theme_void() +
+    self$tema 
+    
+    return(self$grafica)
+  },
 
 #############################
+
   
   
     #' Graficar barras divergentes
