@@ -456,6 +456,39 @@ Encuesta <- R6::R6Class(
 
     ##############
 
+    ################################### función de degradado continuo ###################################
+
+    #' Asigna un degradado de colores continuo a una métrica
+    #'
+    #' Esta función aplica una escala de color continua a la columna indicada 
+    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado 
+    #' entre los colores definidos en `colores_base`. 
+    #' 
+    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el 
+    #' valor máximo con ese color (utilizando `self$color_maximo`).
+    #' 
+
+    degradado_continuo = function(colores_base,col_max = "",freq='media') {
+    
+    
+      escala_color <- scales::col_numeric(
+      palette = colores_base,
+      domain = range(self$tbl[[freq]], na.rm = TRUE))
+      
+      #  Asignar color continuo a cada valor de 'media'
+      self$tbl <- self$tbl |>
+        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
+      
+     # Color max
+      if (col_max != "") {
+        self$color_maximo(col_max, freq = freq)
+      }
+    
+      invisible(self)
+    },
+    
+    #################
+
     #' Graficar saldos de opinión y conocimiento
     #'
     #' @param sufijo_opinion Sufijo de variables de opinión.
