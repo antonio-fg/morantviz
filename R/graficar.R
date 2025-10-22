@@ -376,156 +376,126 @@ Graficar <- R6::R6Class(
     },
 
     
-    #' Preparar datos para gráfico de waffle base
-    #'
-    #' Reformatea la tabla interna para mostrar servicios públicos por región
-    #' en un formato largo y genera coordenadas para los “squircles”.
-    #' @param col_base,           columna fija (eje Y)
-    #' @param  valor = "valor",   valor resultante
-    #' @param col_grupo,          Eje X (ej. "region")
+    #' Preparar datos para gráfico de waffle
+    #' @param eje_y,            columna fija (eje Y)
+    #' @param  valor           "valor",   valor resultante
+    #' @param eje_x,            Eje X (ej. "region")
 
     #' @return Actualiza self$tbl con los datos preparados.
-    preparar_datos_waffle_base = function(
-      col_base,        
-      col_grupo,       
-      valor = "media"  
-    ) {
+    generar_coordenadas = function(eje_y, eje_x, valor = "media") {
       stopifnot(!is.null(self$tbl))
       df <- self$tbl
 
-      # --- Validación de columnas ---
-      if (!all(c(col_base, col_grupo, valor) %in% names(df))) {
+      # Validación de columnas
+      if(!all(c(eje_y, eje_x, valor) %in% names(df))){
         stop("Algunas columnas indicadas no existen en self$tbl.")
       }
 
-      # --- Calcular niveles de ejes ---
-      niveles_x <- df %>%
-        distinct(!!rlang::sym(col_grupo)) %>%
-        pull(!!rlang::sym(col_grupo))
+      # ----------------Niveles para factores --------------------
 
+      #niveles_x: toma los valores únicos de la columna eje_x para mantener el orden de los niveles en el eje X.
+      #niveles_y: agrupa por eje_y,  extrae los valores de la columna eje_y
+
+      niveles_x <- df %>% distinct(!!rlang::sym(eje_x)) %>% pull(!!rlang::sym(eje_x))
       niveles_y <- df %>%
-        group_by(!!rlang::sym(col_base)) %>%
+        group_by(!!rlang::sym(eje_y)) %>%
         summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
-        arrange(desc(promedio)) %>%
-        pull(!!rlang::sym(col_base))
+        pull(!!rlang::sym(eje_y))
 
-      # --- Agregar coordenadas y etiquetas ---
+      #----------------- Preparar tabla base con posiciones--------------------
       df <- df %>%
         mutate(
-          grupo = stringr::str_wrap(!!rlang::sym(col_grupo), 15),
-          base_y = stringr::str_wrap(!!rlang::sym(col_base), 35),
-          etiqueta = scales::percent(!!rlang::sym(valor), accuracy = 1),
-          grupo = factor(grupo, levels = niveles_x),
-          base_y = factor(base_y, levels = rev(niveles_y)),
-          col = as.numeric(grupo),
-          row = as.numeric(base_y),
+          !!rlang::sym(eje_x) := factor(stringr::str_wrap(!!rlang::sym(eje_x), 15), levels = niveles_x),
+          !!rlang::sym(eje_y)  := factor(stringr::str_wrap(!!rlang::sym(eje_y), 35), levels = rev(niveles_y)),
+          col     = as.numeric(!!rlang::sym(eje_x)),
+          row     = as.numeric(!!rlang::sym(eje_y)),
           fill_id = !!rlang::sym(valor),
-          .id = dplyr::row_number()
+          .id = row_number()
         )
 
-      # --- Crear la forma base tipo “squircle” ---
-      n_puntos <- 100
-      a <- 0.45; b <- 0.45; exp <- 9
-      theta <- seq(0, 2 * pi, length.out = n_puntos)
-
-      base_shape <- tibble::tibble(
-        x_unit = a * sign(cos(theta)) * abs(cos(theta))^(2 / exp),
-        y_unit = b * sign(sin(theta)) * abs(sin(theta))^(2 / exp),
+      #---------------- Definir forma squircle ----------------------------
+      # Genera los puntos de un squircle (una mezcla entre cuadrado y círculo) que será la forma de cada celda.
+      n_puntos <- 100; a <- 0.45; b <- 0.45; exp <- 9
+      theta <- seq(0, 2*pi, length.out = n_puntos)
+      base_shape <- tibble(
+        x_unit = a * sign(cos(theta)) * abs(cos(theta))^(2/exp),
+        y_unit = b * sign(sin(theta)) * abs(sin(theta))^(2/exp),
         vertex_id = seq_along(theta)
       )
 
-      df_base <- df %>% mutate(.id = row_number())
-
-      df_squircles <- tidyr::crossing(df_base, base_shape) %>%
+      #------------------ Combinar celda con vértices del squircle --------------
+      # tidyr::crossing(df, base_shape): crea una fila por cada combinación de celda y vértice → así cada celda tendrá 100 puntos para dibujar el squircle.
+      # x y y: coordenadas finales de cada vértice sumando la posición de la celda.
+      df_squircles <- tidyr::crossing(df, base_shape) %>%
         mutate(
           x = col + x_unit,
           y = row + y_unit
         ) %>%
         arrange(.id, vertex_id)
 
-      # --- Crear tabla base para etiquetas (centradas) ---
-      df_etiquetas <- df %>%
-        dplyr::distinct(.id, grupo, base_y, etiqueta, col, row, fill_id) %>%
+      # --------------- Crear tabla para etiquetas centradas -----------
+      #Extrae información única para colocar las etiquetas en el centro de cada celda.
+      #row_pos será usado en geom_text para centrar verticalmente la etiqueta.
+
+      df_etiquetas <- df %>% 
+        dplyr::distinct(.id, !!rlang::sym(eje_x), !!rlang::sym(eje_y), col, row, fill_id) %>% 
         dplyr::mutate(row_pos = row)
 
-      # --- Agregar al tibble completo (sin usar listas) ---
-      df_final <- df_squircles %>%
-        left_join(df_etiquetas, by = c(".id", "grupo", "base_y", "col", "row", "fill_id", "etiqueta"))
-
-      # --- Guardar en self$tbl ---
-      self$tbl <- df_final
+      # ----------------- Combinar ----------------------
+      # Combina los datos de los polígonos con las etiquetas centradas.
+      self$tbl <- df_squircles %>%
+        left_join(df_etiquetas, by = c(".id", eje_x, eje_y,"col","row","fill_id"))
 
       invisible(self)
     },
 
-
-    #' Graficar Heatmap
+    
+    #' Graficar waffle
     #'
     #' Genera la visualización tipo squircle para mostrar porcentajes
     #'
-    #' @param titulo Texto para el título del gráfico. Por defecto: "Gráfico tipo matriz por grupo".
-    #' @param subtitulo Texto opcional para el subtítulo del gráfico. Por defecto: NULL.
-    #' @param nombre_x Etiqueta del eje X (horizontal). Por defecto: "Región".
-    #' @param nombre_y Etiqueta del eje Y (vertical). Por defecto: "Categoría base".
-    #' @param nombre_valor Nombre de la leyenda de colores (fill). Por defecto: "Porcentaje".
-    #' @param escala_color Vector con colores para el gradiente. Debe tener dos elementos: low y high.
+    #' @param nombre_x        Etiqueta del eje X (horizontal)
+    #' @param escala_color    Vector con colores para el gradiente. Debe tener dos elementos: low y high.
+    #' @param eje_x           columna de self$tbl que será eje X
+    #' @param eje_y           columna de self$tbl que será eje Y
     #' 
     #' @return Objeto ggplot.
-    graficar_waffle_base = function(
-      titulo = "Gráfico tipo matriz por grupo",
-      subtitulo = NULL,
-      nombre_x = "Región",
-      nombre_y = "Categoría base",
-      nombre_valor = "Porcentaje",
-      escala_color = c(low = "#cbb2f5", high = "#6a41c6")
+    graficar_waffle = function(
+      nombre_x = NULL,
+      escala_color = c(low = "#9d7ad240", high = "#9d7ad2"),
+      eje_x = "grupo",  
+      eje_y = "base_y"
     ) {
       stopifnot(!is.null(self$tbl))
 
         df <- self$tbl
-
-      # --- Verificar que tiene lo necesario ---
-      if (!all(c("x", "y", "fill_id", "col", "row", "etiqueta", "grupo", "base_y") %in% names(df))) {
-        stop("Los datos no están preparados. Usa primero preparar_datos_matriz_wafle().")
-      }
-      
-      # --- Calcular los niveles de los ejes a partir de los factores ---
-      niveles_x <- levels(df$grupo)
-      niveles_y <- levels(df$base_y)
-
+ 
       # --- Gráfico principal ---
       self$grafica <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, group = .id)) +
         ggplot2::geom_polygon(ggplot2::aes(fill = fill_id), color = "white") +
         ggplot2::geom_text(
-          ggplot2::aes(x = col, y = row_pos, label = etiqueta),
-          size = 10,
-          color = "black",
-          family = "sans",
-          vjust = 0.5,  # centrado vertical
-          hjust = 0.5,   # centrado horizontal
-          inherit.aes = FALSE
+          ggplot2::aes(x = col, y = row_pos, label = scales::percent(fill_id, accuracy = 1)),
+          size = 10, color = "black", family = self$tema$text$family,
+          vjust = 0.5, hjust = 0.5
         ) +
         ggplot2::scale_fill_gradient(
           low = escala_color["low"],
           high = escala_color["high"],
-          name = nombre_valor
         ) +
         ggplot2::scale_x_continuous(
-          breaks = seq_along(niveles_x),
-          labels = niveles_x,
+          breaks = seq_along(levels(df[[eje_x]])),
+          labels = levels(df[[eje_x]]),
           position = "top"
         ) +
         ggplot2::scale_y_continuous(
-          breaks = seq_along(niveles_y),
-          labels = rev(niveles_y)
+          breaks = seq_along(levels(df[[eje_y]])),
+          labels = levels(df[[eje_y]])
         ) +
         ggplot2::labs(
-          title = titulo,
-          subtitle = subtitulo,
-          caption = self$tbl$pregunta[1],
+          caption = caption,
           x = nombre_x,
-          y = nombre_y
         ) +
-        tema_morant() +
+        self$tema +
         ggplot2::theme(
           axis.title.x = ggplot2::element_text(
             size = 14,          

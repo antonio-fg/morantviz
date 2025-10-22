@@ -230,7 +230,10 @@ g$contar_variable_multirespuesta(variable = "problema_inseguridad",
 
 g$tbl
 
-# graficar waffle ----------------------------------  
+
+
+
+# graficar waffle cruzado ----------------------------------  
 
 g$
   contar_variables_porGrupos(variables = c("conoce_pm_astiazaran","conoce_pm_delrio","conoce_pm_lia", "conoce_pm_javier"),
@@ -239,10 +242,36 @@ g$
   pegar_diccionario()$
   pegar_color()
 
-g$preparar_datos_waffle_base(
-  col_base = "nombre",   # eje Y
-  col_grupo = "region", # eje X
-  valor = "media"      # valor numérico
+g$reordenar_columna(columna = "nombre", tipo = "manual", orden)
+g$generar_coordenadas(
+  eje_x = "region", 
+  eje_y = "nombre",
+  valor = "media"      
 )
 
-g$graficar_waffle_base("Conocimiento de personajes región")
+g$graficar_waffle(
+  nombre_x = "Región",
+  eje_x = "region", 
+  eje_y = "nombre"
+)
+
+
+# graficar waffle una variable ------------------------------
+g$contar_variables(variables = c(
+  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$pegar_diccionario()
+g$tbl
+g$pegar_color()
+g$tbl
+g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
+
+g$generar_coordenadas(
+  eje_x = "nombre", 
+  eje_y = "respuesta",
+  valor = "media"
+)
+
+g$graficar_waffle(
+  eje_x = "nombre",
+  eje_y = "respuesta"
+)
