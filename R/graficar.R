@@ -131,6 +131,12 @@ Graficar <- R6::R6Class(
           confint = confint,
           diseno = self$diseno
         )
+      } else{
+        self$tbl <- contar_vars_porGrupos(
+          bd = self$bd,
+          variables = variables,
+          grupos = grupos
+        )
       }
 
       invisible(self)
@@ -342,7 +348,7 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
     #' Graficar Bloque
-    #'  
+    #'
     #' Permite mostrar distintos tipos de métricas (media, n, porcentaje) dentro de cada bloque.
     #'
     #' @param freq Character. Indica la variable que se usará para determinar el tipo de los bloques.
@@ -351,10 +357,10 @@ Graficar <- R6::R6Class(
     #' @return
     #' Objeto `ggplot2::ggplot`. Se almacena en `self$grafica` y se retorna
     #' para permitir manipulaciones adicionales o guardado.
-    graficar_bloque = function(freq = "media") {         
+    graficar_bloque = function(freq = "media") {
       # Crear la gráfica
          # Crear símbolo una sola vez
-      
+
       self$grafica <- ggplot(self$tbl, aes(area = !!rlang::sym(freq), fill = color)) +
         geom_treemap(color = "white", size = 2) +
         geom_treemap_text(
@@ -370,7 +376,7 @@ Graficar <- R6::R6Class(
         scale_fill_identity() +
         labs(caption = self$tbl$pregunta[1]) +
         self$tema
-      return(self$grafica)      
+      return(self$grafica)
     },
     #' Graficar barras divergentes
     #'

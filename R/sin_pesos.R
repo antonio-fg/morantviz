@@ -23,3 +23,19 @@ contar_multirespuesta <- function(bd, variable, sep = "\\s\\/\\s"){
     mutate(codigo = variable) |>
     rename(respuesta := !!rlang::sym(variable))
 }
+
+contar_vars_porGrupos <- function(bd, variables, grupos){
+  aux <- bd |>
+    group_by(across(all_of(grupos)))
+
+  variables |>
+    purrr::map_df(~{
+      aux |>
+        count(!!rlang::sym(.x)) |>
+        rename(respuesta = !!rlang::sym(.x)) |>
+        mutate(codigo = .x,
+               pct = n/sum(n))
+    }) |>
+    ungroup()
+
+}
