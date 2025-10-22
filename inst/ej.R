@@ -16,8 +16,8 @@ usethis::use_readme_rmd( open = FALSE )
 # usethis::use_data(diseno_demo)
 # usethis::use_data(tema_morant)
 # Ejemplo -----------------------------------------------------------------
-
-library(morantviz)
+devtools::load_all(path = "../morantviz/")
+#library(morantviz)
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -25,7 +25,8 @@ dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_lia", "Lía Limón", "Conoce o ha escuchado de (...)",
                         "conoce_pm_javier", "Javier López Casarín", "Conoce o ha escuchado de (...)",
                         "opinion_pm_astiazaran", "Astiazarán","¿Cuál es su opinión sobre (...)?",
-                        "opinion_pm_delrio", "Del Río","¿Cuál es su opinión sobre (...)?"
+                        "opinion_pm_delrio", "Del Río","¿Cuál es su opinión sobre (...)?",
+                        "identificacion_partido", "", "¿Con que partido se identifica?"
 )
 
 
@@ -37,7 +38,16 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Muy buena", "#2ecc71",
                            "Muy mala", "#e74c3c",
                            "Regular", "#f1c40f",
-                           "Ns/Nc", "#95a5a6")
+                           "Ns/Nc", "#95a5a6",
+                           "MORENA", "#B8385C",
+                           "PAN", "#0C3B8C",
+                           "PRI", "#2ECC71",
+                           "PRD", "#F39C12",
+                           "Movimiento Ciudadano (MC)", "#E67E22",
+                           "PT", "#C0392B",
+                           "Partido Verde (PVEM)", "#069441ff",
+                           "Ninguno", "#34495E",
+                           "Otros", "#c1cbccff")
 
 g <- Encuesta$new(diseno = diseno_demo,
                   diccionario = dicc,
@@ -229,3 +239,26 @@ g$contar_variable_multirespuesta(variable = "problema_inseguridad",
                                  confint = F)
 
 g$tbl
+
+#Graficar Bloques Con Facet-------------------------------
+library("stringr")
+g$contar_variables_porGrupos(variables = c("identificacion_partido"),
+                             grupos = c("sexo"), confint = F)
+g$pegar_color()
+g$envolver_etiquetas(columna = "respuesta", 10)
+g$pegar_diccionario()
+
+library("treemapify")
+
+g$graficar_bloque(freq = "media") +
+  facet_wrap(~sexo) +
+  labs(title = "Grafica de bloques de identificación de partidos por sexo") 
+
+#Graficar Bloques -------------------------------
+
+g$contar_variables(variables = c("identificacion_partido"))
+g$pegar_color()
+g$pegar_diccionario()
+
+g$graficar_bloque(freq = "media")
+
