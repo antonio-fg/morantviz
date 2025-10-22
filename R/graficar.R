@@ -131,6 +131,12 @@ Graficar <- R6::R6Class(
           confint = confint,
           diseno = self$diseno
         )
+      } else{
+        self$tbl <- contar_vars_porGrupos(
+          bd = self$bd,
+          variables = variables,
+          grupos = grupos
+        )
       }
 
       invisible(self)
@@ -147,15 +153,22 @@ Graficar <- R6::R6Class(
     #' g$contar_variable_multirespuesta(variable = "problema_inseguridad", sep = "|", confint = F)
     #'
     contar_variable_multirespuesta = function(variable, sep, confint){
-      self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
-                                  variable = variable,
-                                  sep = sep, confint = confint)
+
+      if(private$pesos){
+        self$tbl <- contar_multirespuesta_pesos(diseno = self$diseno,
+                                                variable = variable,
+                                                sep = sep, confint = confint)
+      } else{
+        self$tbl <- contar_multirespuesta(bd = self$bd,
+                                          variable = variable,
+                                          sep = sep)
+      }
 
       invisible(self)
     },
     calcular_pct = function(var = "n", grupo = "codigo"){
       self$tbl <- self$tbl |>
-          mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))
+        mutate(pct = !!rlang::sym(var)/sum(!!rlang::sym(var)), .by = !!rlang::sym(grupo))
 
       invisible(self)
     },
@@ -452,6 +465,37 @@ Graficar <- R6::R6Class(
 
   
   
+    #' Graficar Bloque
+    #'
+    #' Permite mostrar distintos tipos de métricas (media, n, porcentaje) dentro de cada bloque.
+    #'
+    #' @param freq Character. Indica la variable que se usará para determinar el tipo de los bloques.
+    #'   Puede ser `"media"`, `"n"` o `"pct"`. Por defecto es `"media"`.
+    #'
+    #' @return
+    #' Objeto `ggplot2::ggplot`. Se almacena en `self$grafica` y se retorna
+    #' para permitir manipulaciones adicionales o guardado.
+    graficar_bloque = function(freq = "media") {
+      # Crear la gráfica
+         # Crear símbolo una sola vez
+
+      self$grafica <- ggplot(self$tbl, aes(area = !!rlang::sym(freq), fill = color)) +
+        geom_treemap(color = "white", size = 2) +
+        geom_treemap_text(
+          aes(label = paste0(respuesta, " ", scales::percent(!!rlang::sym(freq), accuracy = 1))),
+          color = "white",
+          place = "centre",
+          grow = TRUE,
+          reflow = TRUE,
+          family = self$tema$text$family,
+          fontface = "bold",
+          size = 10
+        ) +
+        scale_fill_identity() +
+        labs(caption = self$tbl$pregunta[1]) +
+        self$tema
+      return(self$grafica)
+    },
     #' Graficar barras divergentes
     #'
     #' Genera un gráfico divergente de opinión (positivas vs negativas).
