@@ -185,6 +185,7 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
+
     #' Reordenar una columna
     #'
     #' Permite reordenar factores de forma manual, ascendente, descendente o por suma.
@@ -317,9 +318,9 @@ Graficar <- R6::R6Class(
    #   invisible(self)
    # },
 
-    pegar_color = function(columna = "respuesta") { 
+    pegar_color = function(columna = "respuesta") {
       columna_sym <- rlang::sym(columna)
-    
+
       self$tbl <- self$tbl |>
         dplyr::left_join(self$colores, dplyr::join_by(!!columna_sym)) |>
         dplyr::mutate(
@@ -329,7 +330,7 @@ Graficar <- R6::R6Class(
             .data$color
           )
         )
-      
+
       invisible(self)
     },
 
@@ -339,7 +340,7 @@ Graficar <- R6::R6Class(
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
-    agregar_saldo = function(por, freq = "media"){ 
+    agregar_saldo = function(por, freq = "media"){
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(!!rlang::sym(freq)), .by = !!rlang::sym(por))
       invisible(self)
@@ -366,20 +367,188 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
+    #' Graficar barras verticales
+    #'
+    #' @param y Variable en el eje y.
+    #' @return Objeto `ggplot`.
+    #' @examples
+    #' g$graficar_barras_v("nombre")
+    graficar_barras_v = function(x, y = "media"){
+      self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x= !!rlang::sym(x), y = !!rlang::sym(y)))+
+        ggchicklet::geom_chicklet(ggplot2::aes(fill = color),width = 0.8 ) +
+        ggplot2::geom_text( ggplot2::aes(label = scales::percent(media, accuracy = 1)),
+      size = 5, vjust = -.1, family = self$tema$text$family) +
+        ggplot2::labs(caption = self$tbl$pregunta[1])+
+        ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,1))+
+        ggplot2::scale_fill_identity()+
+        self$tema
+        return(self$grafica)
+    },
+    #' Graficar dona o gauge
+    #'
+    #' @param x Variable en el eje x.
+    #' @return Objeto `ggplot`.
+    #' @
+    #' g$graficar_gauge("nombre")
+
+    graficar_gauge = function (){
+      valor <- self$tbl |>
+        dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
+        dplyr::pull(media)
+
+      self$grafica <- self$tbl |>
+        ggplot2::ggplot(ggplot2::aes(x = "", y = media, fill = color)) +
+        ggplot2::geom_col(width = 0.4) +
+        ggplot2::coord_polar(theta = "y", start = 0) +
+        ggplot2::scale_fill_identity() +
+        ggplot2::theme_void() +
+      ggplot2::annotate("text",
+      x = 0,
+      y = 0,
+      label = base::paste0(scales::percent(valor, accuracy = 1)),
+      size = 12, fontface = "bold", color = "black")
+      return(self$grafica)
+    },
+    #' Graficar piramide
+    #' Necesario hacer cruce de rango edad por sexo
+    #' @param x Variable en el eje x.
+    #' @return Objeto `ggplot`.
+    #' @ examples
+    #' g$contar_variables_porGrupos(variables = c("rango_edad"),grupos = c("sexo"), confint = F)
+    #' g$graficar_piramide()
+    graficar_piramide = function(cantidad_puntos = 30, tam_punto = 6,
+      tam_texto_etiqueta_porcentaje = 6,
+      separacion_texto = 1.5,
+      espaciado =  c(1, 1),
+      tam_texto_rango_edad = 6){
+
+        #Parámetros fijos
+      grupo_izquierda <- "F"
+      grupo_derecha   <- "M"
+      columna_categoria <- "respuesta"
+      columna_grupo <- "sexo"
+      columna_pct <- "media"
+      fuente <- "Montserrat"
+      titulo <- "Distribución poblacional por sexo"
+      mostrar_etiquetas <- TRUE
+      niveles_respuesta <- (base::unique(g$tbl$respuesta))
+      colores_personalizados <- stats::setNames(c("#94D0CC", "#B49FCC"),
+                                   c(grupo_izquierda, grupo_derecha))
+
+      # --- 3. Expandir puntos ---
+      bd_expandido <- self$tbl %>%
+        dplyr::filter(.data[[columna_grupo]] %in% c(grupo_izquierda, grupo_derecha)) %>%
+        dplyr::mutate(
+          grupo = .data[[columna_grupo]],
+          categoria = base::factor(.data[[columna_categoria]],
+            levels = base::rev(niveles_respuesta %||% base::unique(.data[[columna_categoria]]))),
+            puntos = base::round(.data[[columna_pct]] * cantidad_puntos)) %>%
+        dplyr::filter(puntos > 0) %>%
+        tidyr::uncount(puntos, .remove = FALSE) %>%
+        dplyr::group_by(categoria, grupo) %>%
+        dplyr::mutate(
+          fila = dplyr::row_number(),
+          x = dplyr::if_else(grupo == grupo_izquierda, -fila, fila),
+          etiqueta = dplyr::if_else(
+            fila == base::max(fila),
+            base::paste0(base::round(100 * dplyr::first(.data[[columna_pct]]), 1), "%"),
+            NA_character_)) %>%
+        dplyr::ungroup()
+
+      # --- 4. Etiquetas del centro ---
+      etiquetas_centro <- bd_expandido %>%
+        dplyr::distinct(categoria) %>%
+        dplyr::mutate(x = 0, y = categoria)
+      # --- 5. Colores --
+      colores_usar <- colores_personalizados %||%
+        stats::setNames(c("#94D0CC", "#B49FCC"), c(grupo_izquierda, grupo_derecha))
+
+      x_max <- base::max(base::abs(bd_expandido$x)) + 4 # margen de 2 puntos de ancho
+
+      g_piramide <- ggplot2::ggplot(bd_expandido, ggplot2::aes(x = x, y = categoria, color = grupo)) +
+        ggplot2::geom_point(size = tam_punto, alpha = 0.8) +
+        ggplot2::scale_color_manual(values = colores_usar, name = NULL) +
+        ggplot2::scale_x_continuous(
+          limits = c(-x_max, x_max),
+          breaks = NULL,
+          expand = c(0, 0)) +
+        ggplot2::scale_y_discrete(position = "right", expand = expansion(mult = espaciado)) +
+        ggplot2::geom_text(
+          data = etiquetas_centro,
+          aes(x = 0, y = y, label = y),
+          inherit.aes = FALSE,
+          size = tam_texto_rango_edad,
+          hjust = 0.5,
+          vjust = 0.5,
+          family = fuente,
+          color = "black") +
+        ggplot2::geom_vline(xintercept = 0, color = "gray70", linetype = "dotted", linewidth = 0.3) +
+        ggplot2::theme_minimal(base_family = fuente) +
+        ggplot2::labs(title = " ", x = NULL, y = NULL) +
+        ggplot2::theme(
+          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5, size = 10, family = fuente),
+          axis.text.x = ggplot2::element_blank(),
+          axis.text.y = ggplot2::element_blank(),
+          panel.grid = ggplot2::element_blank(),
+          legend.position = "top",
+          legend.text = ggplot2::element_text(size = 9, family = fuente)) +
+        ggplot2::geom_text(
+          ggplot2::aes(
+            label = etiqueta,
+            hjust = dplyr::if_else(grupo == grupo_izquierda, 1.1, -0.1)),size = tam_texto_etiqueta_porcentaje,
+            na.rm = TRUE,
+            family = fuente,
+            color = "black",
+            nudge_x = dplyr::if_else(
+              bd_expandido$grupo == grupo_izquierda, -separacion_texto, separacion_texto))
+      return(g_piramide)
+    },
+
+
+    #' Graficar lollipops sin multirespuesta
+    #'
+    #' @param x Variable en el eje y.
+    #' @return Objeto `ggplot`.
+    #' @
+    #' g$graficar_lollipops("respuesta")
+    graficar_lollipops = function(x, y = "media"){
+      self$grafica <- self$tbl |>
+        ggplot2::ggplot(ggplot2::aes(x = stats::reorder(!!rlang::sym(x), !!rlang::sym(y)), y = !!rlang::sym(y), color = color)) +
+        ggplot2::geom_segment(ggplot2::aes(xend = !!rlang::sym(x), y = 0, yend = !!rlang::sym(y)), linewidth = 1) +
+        ggplot2::geom_point(size = 5) +
+        ggplot2::geom_text(ggplot2::aes(label = scales::percent(!!rlang::sym(y), accuracy = 1.)),
+      size = 6, hjust = -0.5, color = "black") +
+        ggplot2::coord_flip() +
+        ggplot2::scale_x_discrete(labels = function(x) stringr::str_wrap(string = x, width = 60)) +
+        ggplot2::scale_y_continuous(limits = c(0,1),labels = scales::percent_format())+
+        ggplot2::scale_color_identity(guide = "none") +
+        ggplot2::labs(title = " ")+
+        self$tema+
+        ggplot2::theme(
+          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+          axis.text.y = ggplot2::element_text(size = 15, family = "Montserrat"),
+          panel.grid.major.y = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank(),
+          plot.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
+          panel.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
+          legend.background = ggplot2::element_rect(color = "transparent", fill = "transparent") )
+      return(self$grafica)
+    },
+
 
 ################################### Graficar Líneas  ###################################
 
 #' Genera una gráfica de líneas para una variable
 #'
 #' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
-#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
+#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la
 #' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
 #'
 #' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
 #' y se aplica el tema corporativo definido en la clase.
 #'
 #'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
-#' `freq` Nombre de la columna numérica que define el eje Y 
+#' `freq` Nombre de la columna numérica que define el eje Y
 #'        (por defecto "media").
 #'
 #' @return La gráfica de líneas
@@ -390,16 +559,16 @@ Graficar <- R6::R6Class(
       freq = "media",
       color = "color"
       ){
-        group = "codigo"  
+        group = "codigo"
 
         aes_args <- aes(
-          x = !!sym(x), 
-          y = !!sym(freq), 
-          group = !!sym(group), 
+          x = !!sym(x),
+          y = !!sym(freq),
+          group = !!sym(group),
           color = color   # 🔑 Usar columna self$tbl$color
         )
 
-        self$grafica <- self$tbl |> 
+        self$grafica <- self$tbl |>
           ggplot(aes_args) +
           geom_line(linewidth = 1) +
           geom_point(size = 3) +
@@ -409,8 +578,8 @@ Graficar <- R6::R6Class(
                     vjust = -1, color = "black") +
           scale_y_continuous(labels = scales::percent_format(accuracy = 1),
                              limits = c(0,1)) +
-          labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
-                                "Sin pregunta definida", 
+          labs(caption = ifelse(is.na(self$tbl$pregunta[1]),
+                                "Sin pregunta definida",
                                 self$tbl$pregunta[1])) +
           self$tema
 
@@ -420,27 +589,27 @@ Graficar <- R6::R6Class(
 
 
 ################################### Grafica Sankey  ###################################
-  
+
 #' Genera un diagrama de Sankey a partir de la tabla de la clase
 #'
 #' Esta función toma la tabla `self$tbl` y construye un diagrama de Sankey
-#' que muestra los flujos desde una variable de agrupación (`grupo`) hacia 
+#' que muestra los flujos desde una variable de agrupación (`grupo`) hacia
 #' las respuestas (`respuesta`), con pesos definidos por una métrica (`freq`).
 #'
 #' `grupo` Nombre de la columna que se usará como primer nodo (ej. "sexo").
-#' `freq` Nombre de la columna numérica que define el grosor de los flujos 
+#' `freq` Nombre de la columna numérica que define el grosor de los flujos
 #'        (por defecto "media").
 #'
 #' @return La gráfica Sankey.
-    
+
   graficar_sankey = function(grupo,freq = "media"){
-  
+
     sankey_df <- self$tbl %>%
     select(grupo, respuesta, !!sym(freq))
-  
+
     sankey_long <- sankey_df %>%
     make_long(grupo, respuesta, value = !!sym(freq))
-  
+
     paleta <- setNames(self$colores$color, self$colores$respuesta)
 
     self$grafica <- ggplot(sankey_long,
@@ -448,23 +617,23 @@ Graficar <- R6::R6Class(
            node = node, next_node = next_node,
            value = value,
            fill = node)) +   # los flujos toman color del nodo
-    geom_sankey(flow.alpha = 0.9, color = NA) +   
+    geom_sankey(flow.alpha = 0.9, color = NA) +
     geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
     scale_fill_manual(values = paleta, na.value = "grey90") +  # usa paleta, gris claro para extras
     scale_y_continuous(breaks = NULL) +
-    labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
-                   "Sin pregunta definida", 
-                   self$tbl$pregunta[1]))+  
+    labs(caption = ifelse(is.na(self$tbl$pregunta[1]),
+                   "Sin pregunta definida",
+                   self$tbl$pregunta[1]))+
     theme_void() +
-    self$tema 
-    
+    self$tema
+
     return(self$grafica)
   },
 
 #############################
 
-  
-  
+
+
     #' Graficar Bloque
     #'
     #' Permite mostrar distintos tipos de métricas (media, n, porcentaje) dentro de cada bloque.
@@ -536,7 +705,7 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
-    
+
     #' Preparar datos para gráfico de waffle
     #' @param eje_y,            columna fija (eje Y)
     #' @param  valor           "valor",   valor resultante
@@ -598,8 +767,8 @@ Graficar <- R6::R6Class(
       #Extrae información única para colocar las etiquetas en el centro de cada celda.
       #row_pos será usado en geom_text para centrar verticalmente la etiqueta.
 
-      df_etiquetas <- df %>% 
-        dplyr::distinct(.id, !!rlang::sym(eje_x), !!rlang::sym(eje_y), col, row, fill_id) %>% 
+      df_etiquetas <- df %>%
+        dplyr::distinct(.id, !!rlang::sym(eje_x), !!rlang::sym(eje_y), col, row, fill_id) %>%
         dplyr::mutate(row_pos = row)
 
       # ----------------- Combinar ----------------------
@@ -610,7 +779,7 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    
+
     #' Graficar waffle
     #'
     #' Genera la visualización tipo squircle para mostrar porcentajes
@@ -632,7 +801,7 @@ Graficar <- R6::R6Class(
       stopifnot(!is.null(self$tbl))
 
         df <- self$tbl
- 
+
       # --- Gráfico principal ---
       self$grafica <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, group = .id)) +
         ggplot2::geom_polygon(ggplot2::aes(fill = fill_id), color = "white") +
@@ -661,10 +830,10 @@ Graficar <- R6::R6Class(
         self$tema +
         ggplot2::theme(
           axis.title.x = ggplot2::element_text(
-            size = 14,          
-            face = "bold",      
-            hjust = 0.5,        
-            vjust = 2     
+            size = 14,
+            face = "bold",
+            hjust = 0.5,
+            vjust = 2
           ),
           panel.grid = ggplot2::element_blank(),
           axis.text.x = ggplot2::element_text(face = "bold", size = 12),
@@ -696,7 +865,7 @@ Graficar <- R6::R6Class(
 #'   color_principal = "pink",
 #'   tema = tema_morant()
 #' )
-#' 
+#'
 #
 #' g$saldos_opinion(
 #'   sufijo_opinion = "opinion_pm",
@@ -722,16 +891,16 @@ Encuesta <- R6::R6Class(
     },
 
     ################################### Función máximo  ###################################
- 
-    #' Resalta el valor máximo de una métrica 
+
+    #' Resalta el valor máximo de una métrica
     #'
-    #' Esta función modifica la columna `color` de `self$tbl`, asignando 
+    #' Esta función modifica la columna `color` de `self$tbl`, asignando
     #' un color especial (`col_max`) a la fila que contiene el valor máximo
     #' de la variable indicada en `freq`.
 
       color_maximo = function(col_max,freq="media") {
 
-      self$tbl <- self$tbl |> mutate(color = dplyr::if_else(!!rlang::sym(freq) == max(!!rlang::sym(freq)), !!col_max, color))  
+      self$tbl <- self$tbl |> mutate(color = dplyr::if_else(!!rlang::sym(freq) == max(!!rlang::sym(freq)), !!col_max, color))
 
       invisible(self)
       },
@@ -742,33 +911,33 @@ Encuesta <- R6::R6Class(
 
     #' Asigna un degradado de colores continuo a una métrica
     #'
-    #' Esta función aplica una escala de color continua a la columna indicada 
-    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado 
-    #' entre los colores definidos en `colores_base`. 
-    #' 
-    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el 
+    #' Esta función aplica una escala de color continua a la columna indicada
+    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado
+    #' entre los colores definidos en `colores_base`.
+    #'
+    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el
     #' valor máximo con ese color (utilizando `self$color_maximo`).
-    #' 
+    #'
 
     degradado_continuo = function(colores_base,col_max = "",freq='media') {
-    
-    
+
+
       escala_color <- scales::col_numeric(
       palette = colores_base,
       domain = range(self$tbl[[freq]], na.rm = TRUE))
-      
+
       #  Asignar color continuo a cada valor de 'media'
       self$tbl <- self$tbl |>
         dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
-      
+
      # Color max
       if (col_max != "") {
         self$color_maximo(col_max, freq = freq)
       }
-    
+
       invisible(self)
     },
-    
+
     #################
 
     #' Graficar saldos de opinión y conocimiento
