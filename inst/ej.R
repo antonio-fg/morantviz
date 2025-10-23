@@ -25,7 +25,7 @@ library(tidyr)
 library(ggalluvial)
 
 
-devtools::load_all(path = "../morantviz/") 
+devtools::load_all(path = "../morantviz/")
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -96,7 +96,7 @@ g$graficar_barras_h(x = "respuesta") +
 ####ejemplo barras verticales
 g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
 g$pegar_color()
-g$graficar_barras_v(x = "respuesta") 
+g$graficar_barras_v(x = "respuesta")
 
 
 #ejemplo lollipops
@@ -112,7 +112,7 @@ g$graficar_lollipops("respuesta")+
 ####ejemplo barras verticales
 g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
 g$pegar_color()
-g$graficar_barras_v(x = "respuesta") 
+g$graficar_barras_v(x = "respuesta")
 
 
 
@@ -121,18 +121,6 @@ g$tbl
 g$pegar_color()
 g$tbl
 g$graficar_gauge()
-
-g$contar_variables(variables = c(
-  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
-g$pegar_color()
-g$tbl
-g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
-
-g$preparar_datos_waffle("opinion_pm")
-g$tbl
-
-g$graficar_waffle() +
-  tema_morant(base_family = "KuFam")
 
 g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
 g$tbl
@@ -145,32 +133,20 @@ g$graficar_gauge() +
   theme(plot.title = element_text(family = "KuFam", size = 25))
 
 
-g$contar_variables(variables = c(
-  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
-g$tbl
-g$pegar_color()
-g$tbl
-g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
-
-g$preparar_datos_waffle("opinion_pm")
-g$tbl
-
-g$graficar_waffle() +
-  tema_morant(base_family = "KuFam")
 
 
 ######Pirámide
 g$contar_variables_porGrupos(variables = c("rango_edad"),
                              grupos = c("sexo"), confint = F)
-g$tbl<-g$tbl |> 
-  mutate(respuesta = 
+g$tbl<-g$tbl |>
+  mutate(respuesta =
     case_when(respuesta == "18A24" ~ "18-24",
   respuesta == "25A39" ~ "25-39",
   respuesta == "40A59" ~ "40-59",
   respuesta == "60YMAS" ~ "60+",
  TRUE ~respuesta))
 
-  
+
 g$graficar_piramide(espaciado = c(0.05,0.05))
 
 
@@ -333,7 +309,7 @@ g$tbl
 
 
 
-# graficar waffle cruzado ----------------------------------  
+# graficar waffle cruzado ----------------------------------
 
 g$
   contar_variables_porGrupos(variables = c("conoce_pm_astiazaran","conoce_pm_delrio","conoce_pm_lia", "conoce_pm_javier"),
@@ -344,14 +320,14 @@ g$
 
 g$reordenar_columna(columna = "nombre", tipo = "manual", orden)
 g$generar_coordenadas(
-  eje_x = "region", 
+  eje_x = "region",
   eje_y = "nombre",
-  valor = "media"      
+  valor = "media"
 )
 
 g$graficar_waffle(
   nombre_x = "Región",
-  eje_x = "region", 
+  eje_x = "region",
   eje_y = "nombre"
 )
 
@@ -366,7 +342,7 @@ g$tbl
 g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
 
 g$generar_coordenadas(
-  eje_x = "nombre", 
+  eje_x = "nombre",
   eje_y = "respuesta",
   valor = "media"
 )
@@ -387,7 +363,7 @@ library("treemapify")
 
 g$graficar_bloque(freq = "media") +
   facet_wrap(~sexo) +
-  labs(title = "Grafica de bloques de identificación de partidos por sexo") 
+  labs(title = "Grafica de bloques de identificación de partidos por sexo")
 
 #Graficar Bloques -------------------------------
 
