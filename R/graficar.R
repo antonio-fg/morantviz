@@ -376,7 +376,7 @@ Graficar <- R6::R6Class(
     graficar_barras_v = function(x, y = "media"){
       self$grafica <- ggplot2::ggplot(self$tbl, ggplot2::aes(x= !!rlang::sym(x), y = !!rlang::sym(y)))+
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color),width = 0.8 ) +
-        ggplot2::geom_text( ggplot2::aes(label = scales::percent(media, accuracy = 1)),
+        ggplot2::geom_text( ggplot2::aes(label = scales::percent(!!rlang::sym(y), accuracy = 1)),
       size = 5, vjust = -.1, family = self$tema$text$family) +
         ggplot2::labs(caption = self$tbl$pregunta[1])+
         ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1), limits = c(0,1))+
@@ -526,7 +526,7 @@ Graficar <- R6::R6Class(
         self$tema+
         ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-          axis.text.y = ggplot2::element_text(size = 15, family = "Montserrat"),
+          axis.text.y = ggplot2::element_text(size = 15, family = self$tema$text$family),
           panel.grid.major.y = ggplot2::element_blank(),
           panel.grid.minor = ggplot2::element_blank(),
           plot.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
