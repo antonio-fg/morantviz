@@ -330,6 +330,51 @@ g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_de
 
 g$tbl
 
+
+
+
+# graficar waffle cruzado ----------------------------------  
+
+g$
+  contar_variables_porGrupos(variables = c("conoce_pm_astiazaran","conoce_pm_delrio","conoce_pm_lia", "conoce_pm_javier"),
+                             grupos = c("region"), confint = F)$
+  filtrar_respuesta(valor = c("Sí"))$
+  pegar_diccionario()$
+  pegar_color()
+
+g$reordenar_columna(columna = "nombre", tipo = "manual", orden)
+g$generar_coordenadas(
+  eje_x = "region", 
+  eje_y = "nombre",
+  valor = "media"      
+)
+
+g$graficar_waffle(
+  nombre_x = "Región",
+  eje_x = "region", 
+  eje_y = "nombre"
+)
+
+
+# graficar waffle una variable ------------------------------
+g$contar_variables(variables = c(
+  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$pegar_diccionario()
+g$tbl
+g$pegar_color()
+g$tbl
+g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
+
+g$generar_coordenadas(
+  eje_x = "nombre", 
+  eje_y = "respuesta",
+  valor = "media"
+)
+
+g$graficar_waffle(
+  eje_x = "nombre",
+  eje_y = "respuesta"
+)
 #Graficar Bloques Con Facet-------------------------------
 library("stringr")
 g$contar_variables_porGrupos(variables = c("identificacion_partido"),

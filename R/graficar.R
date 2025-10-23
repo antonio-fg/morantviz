@@ -786,6 +786,144 @@ Graficar <- R6::R6Class(
         lemon::scale_y_symmetric(labels = function(x) scales::percent(abs(x), accuracy = 1)) +
         ggplot2::labs(fill = NULL, color = NULL)
       return(self$grafica)
+    },
+
+    
+    #' Preparar datos para gráfico de waffle
+    #' @param eje_y,            columna fija (eje Y)
+    #' @param  valor           "valor",   valor resultante
+    #' @param eje_x,            Eje X (ej. "region")
+
+    #' @return Actualiza self$tbl con los datos preparados.
+    generar_coordenadas = function(eje_y, eje_x, valor = "media") {
+      stopifnot(!is.null(self$tbl))
+      df <- self$tbl
+
+      # Validación de columnas
+      if(!all(c(eje_y, eje_x, valor) %in% names(df))){
+        stop("Algunas columnas indicadas no existen en self$tbl.")
+      }
+
+      # ----------------Niveles para factores --------------------
+
+      #niveles_x: toma los valores únicos de la columna eje_x para mantener el orden de los niveles en el eje X.
+      #niveles_y: agrupa por eje_y,  extrae los valores de la columna eje_y
+
+      niveles_x <- df %>% distinct(!!rlang::sym(eje_x)) %>% pull(!!rlang::sym(eje_x))
+      niveles_y <- df %>%
+        group_by(!!rlang::sym(eje_y)) %>%
+        summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
+        pull(!!rlang::sym(eje_y))
+
+      #----------------- Preparar tabla base con posiciones--------------------
+      df <- df %>%
+        mutate(
+          !!rlang::sym(eje_x) := factor(stringr::str_wrap(!!rlang::sym(eje_x), 15), levels = niveles_x),
+          !!rlang::sym(eje_y)  := factor(stringr::str_wrap(!!rlang::sym(eje_y), 35), levels = rev(niveles_y)),
+          col     = as.numeric(!!rlang::sym(eje_x)),
+          row     = as.numeric(!!rlang::sym(eje_y)),
+          fill_id = !!rlang::sym(valor),
+          .id = row_number()
+        )
+
+      #---------------- Definir forma squircle ----------------------------
+      # Genera los puntos de un squircle (una mezcla entre cuadrado y círculo) que será la forma de cada celda.
+      n_puntos <- 100; a <- 0.45; b <- 0.45; exp <- 9
+      theta <- seq(0, 2*pi, length.out = n_puntos)
+      base_shape <- tibble(
+        x_unit = a * sign(cos(theta)) * abs(cos(theta))^(2/exp),
+        y_unit = b * sign(sin(theta)) * abs(sin(theta))^(2/exp),
+        vertex_id = seq_along(theta)
+      )
+
+      #------------------ Combinar celda con vértices del squircle --------------
+      # tidyr::crossing(df, base_shape): crea una fila por cada combinación de celda y vértice → así cada celda tendrá 100 puntos para dibujar el squircle.
+      # x y y: coordenadas finales de cada vértice sumando la posición de la celda.
+      df_squircles <- tidyr::crossing(df, base_shape) %>%
+        mutate(
+          x = col + x_unit,
+          y = row + y_unit
+        ) %>%
+        arrange(.id, vertex_id)
+
+      # --------------- Crear tabla para etiquetas centradas -----------
+      #Extrae información única para colocar las etiquetas en el centro de cada celda.
+      #row_pos será usado en geom_text para centrar verticalmente la etiqueta.
+
+      df_etiquetas <- df %>% 
+        dplyr::distinct(.id, !!rlang::sym(eje_x), !!rlang::sym(eje_y), col, row, fill_id) %>% 
+        dplyr::mutate(row_pos = row)
+
+      # ----------------- Combinar ----------------------
+      # Combina los datos de los polígonos con las etiquetas centradas.
+      self$tbl <- df_squircles %>%
+        left_join(df_etiquetas, by = c(".id", eje_x, eje_y,"col","row","fill_id"))
+
+      invisible(self)
+    },
+
+    
+    #' Graficar waffle
+    #'
+    #' Genera la visualización tipo squircle para mostrar porcentajes
+    #'
+    #' @param nombre_x        Etiqueta del eje X (horizontal)
+    #' @param escala_color    Vector con colores para el gradiente. Debe tener dos elementos: low y high.
+    #' @param eje_x           columna de self$tbl que será eje X
+    #' @param eje_y           columna de self$tbl que será eje Y
+    #' 
+    #' @return Objeto ggplot.
+    graficar_waffle = function(
+      nombre_x = NULL,
+      escala_color = c(low = "#9d7ad240", high = "#9d7ad2"),
+      eje_x = "grupo",  
+      eje_y = "base_y"
+    ) {
+      stopifnot(!is.null(self$tbl))
+
+        df <- self$tbl
+ 
+      # --- Gráfico principal ---
+      self$grafica <- ggplot2::ggplot(df, ggplot2::aes(x = x, y = y, group = .id)) +
+        ggplot2::geom_polygon(ggplot2::aes(fill = fill_id), color = "white") +
+        ggplot2::geom_text(
+          ggplot2::aes(x = col, y = row_pos, label = scales::percent(fill_id, accuracy = 1)),
+          size = 10, color = "black", family = self$tema$text$family,
+          vjust = 0.5, hjust = 0.5
+        ) +
+        ggplot2::scale_fill_gradient(
+          low = escala_color["low"],
+          high = escala_color["high"],
+        ) +
+        ggplot2::scale_x_continuous(
+          breaks = seq_along(levels(df[[eje_x]])),
+          labels = levels(df[[eje_x]]),
+          position = "top"
+        ) +
+        ggplot2::scale_y_continuous(
+          breaks = seq_along(levels(df[[eje_y]])),
+          labels = levels(df[[eje_y]])
+        ) +
+        ggplot2::labs(
+          caption = caption,
+          x = nombre_x,
+        ) +
+        self$tema +
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_text(
+            size = 14,          
+            face = "bold",      
+            hjust = 0.5,        
+            vjust = 2     
+          ),
+          panel.grid = ggplot2::element_blank(),
+          axis.text.x = ggplot2::element_text(face = "bold", size = 12),
+          axis.text.y = ggplot2::element_text(size = 14, face = "bold"),
+          plot.title = ggplot2::element_text(face = "bold", size = 16, hjust = 0.5),
+          plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5)
+        )
+
+      return(self$grafica)
     }
   )
 )
