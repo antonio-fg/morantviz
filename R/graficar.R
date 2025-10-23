@@ -526,7 +526,7 @@ Graficar <- R6::R6Class(
         self$tema+
         ggplot2::theme(
           plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-          axis.text.y = ggplot2::element_text(size = 15, family = "Montserrat"),
+          axis.text.y = ggplot2::element_text(size = 15, family = self$tema$text$family),
           panel.grid.major.y = ggplot2::element_blank(),
           panel.grid.minor = ggplot2::element_blank(),
           plot.background = ggplot2::element_rect(color = "transparent", fill = "transparent"),
