@@ -619,13 +619,15 @@ Graficar <- R6::R6Class(
     #' @param escala_color    Vector con colores para el gradiente. Debe tener dos elementos: low y high.
     #' @param eje_x           columna de self$tbl que será eje X
     #' @param eje_y           columna de self$tbl que será eje Y
+    #' @param caption         agrega el caption a la grafica, la puede llevar o quedar vacio.
     #' 
     #' @return Objeto ggplot.
     graficar_waffle = function(
       nombre_x = NULL,
       escala_color = c(low = "#9d7ad240", high = "#9d7ad2"),
       eje_x = "grupo",  
-      eje_y = "base_y"
+      eje_y = "base_y",
+      caption = NULL
     ) {
       stopifnot(!is.null(self$tbl))
 
