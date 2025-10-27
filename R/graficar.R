@@ -916,9 +916,7 @@ Graficar <- R6::R6Class(
       #niveles_x: toma los valores únicos de la columna eje_x para mantener el orden de los niveles en el eje X.
       #niveles_y: agrupa por eje_y,  extrae los valores de la columna eje_y
 
-      niveles_x <- df %>%
-        distinct(!!rlang::sym(eje_x)) %>%
-        pull(!!rlang::sym(eje_x))
+      niveles_x <- levels(df[[eje_x]])
       niveles_y <- df %>%
         group_by(!!rlang::sym(eje_y)) %>%
         summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
@@ -1041,7 +1039,7 @@ Graficar <- R6::R6Class(
         ) +
         ggplot2::scale_y_continuous(
           breaks = seq_along(levels(df[[eje_y]])),
-          labels = levels(df[[eje_y]])
+          labels = str_wrap(levels(df[[eje_y]]), 45)
         ) +
         ggplot2::labs(
           caption = caption,
