@@ -929,12 +929,10 @@ Graficar <- R6::R6Class(
         mutate(
           !!rlang::sym(eje_x) := factor(
             !!rlang::sym(eje_x),
-            15,
             levels = niveles_x
           ),
           !!rlang::sym(eje_y) := factor(
             !!rlang::sym(eje_y),
-            35,
             levels = rev(niveles_y)
           ),
           col = as.numeric(!!rlang::sym(eje_x)),
