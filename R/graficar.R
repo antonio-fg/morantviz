@@ -55,6 +55,7 @@ Graficar <- R6::R6Class(
     color_principal = NULL,
     #' @field tema Tema de `ggplot` a aplicar en las gráficas.
     tema = NULL,
+    n = NULL, # Frecuencia de categoria para graficar nube
 
     #' Inicializar objeto Graficar
     #'
@@ -367,103 +368,139 @@ Graficar <- R6::R6Class(
     },
 
 
-################################### Graficar Líneas  ###################################
-
-#' Genera una gráfica de líneas para una variable
-#'
-#' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
-#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
-#' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
-#'
-#' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
-#' y se aplica el tema corporativo definido en la clase.
-#'
-#'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
-#' `freq` Nombre de la columna numérica que define el eje Y 
-#'        (por defecto "media").
-#'
-#' @return La gráfica de líneas
-#'
-
-  graficar_lineas = function(
-      x,
-      freq = "media",
-      color = "color"
-      ){
-        group = "codigo"  
-
-        aes_args <- aes(
-          x = !!sym(x), 
-          y = !!sym(freq), 
-          group = !!sym(group), 
-          color = color   # 🔑 Usar columna self$tbl$color
-        )
-
-        self$grafica <- self$tbl |> 
-          ggplot(aes_args) +
-          geom_line(linewidth = 1) +
-          geom_point(size = 3) +
-          geom_text(aes(label = scales::percent(media, accuracy = 1)),
-                    size = 5, hjust = -.1,
-                    family = self$tema$text$family,
-                    vjust = -1, color = "black") +
-          scale_y_continuous(labels = scales::percent_format(accuracy = 1),
-                             limits = c(0,1)) +
-          labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
-                                "Sin pregunta definida", 
-                                self$tbl$pregunta[1])) +
-          self$tema
-
+    ################################### Graficar Líneas  ###################################
+      
+    #' Genera una gráfica de líneas para una variable
+    #'
+    #' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
+    #' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
+    #' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
+    #'
+    #' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
+    #' y se aplica el tema corporativo definido en la clase.
+    #'
+    #'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
+    #' `freq` Nombre de la columna numérica que define el eje Y 
+    #'        (por defecto "media").
+    #'
+    #' @return La gráfica de líneas
+    #'
+      
+      graficar_lineas = function(
+          x,
+          freq = "media",
+          color = "color"
+          ){
+            group = "codigo"  
+          
+            aes_args <- aes(
+              x = !!sym(x), 
+              y = !!sym(freq), 
+              group = !!sym(group), 
+              color = color   # 🔑 Usar columna self$tbl$color
+            )
+          
+            self$grafica <- self$tbl |> 
+              ggplot(aes_args) +
+              geom_line(linewidth = 1) +
+              geom_point(size = 3) +
+              geom_text(aes(label = scales::percent(media, accuracy = 1)),
+                        size = 5, hjust = -.1,
+                        family = self$tema$text$family,
+                        vjust = -1, color = "black") +
+              scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                                 limits = c(0,1)) +
+              labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                                    "Sin pregunta definida", 
+                                    self$tbl$pregunta[1])) +
+              self$tema
+          
+            return(self$grafica)
+        },
+      
+      
+      
+    ################################### Grafica Sankey  ###################################
+      
+    #' Genera un diagrama de Sankey a partir de la tabla de la clase
+    #'
+    #' Esta función toma la tabla `self$tbl` y construye un diagrama de Sankey
+    #' que muestra los flujos desde una variable de agrupación (`grupo`) hacia 
+    #' las respuestas (`respuesta`), con pesos definidos por una métrica (`freq`).
+    #'
+    #' `grupo` Nombre de la columna que se usará como primer nodo (ej. "sexo").
+    #' `freq` Nombre de la columna numérica que define el grosor de los flujos 
+    #'        (por defecto "media").
+    #'
+    #' @return La gráfica Sankey.
+        
+      graficar_sankey = function(grupo,freq = "media"){
+      
+        sankey_df <- self$tbl %>%
+        select(grupo, respuesta, !!sym(freq))
+      
+        sankey_long <- sankey_df %>%
+        make_long(grupo, respuesta, value = !!sym(freq))
+      
+        paleta <- setNames(self$colores$color, self$colores$respuesta)
+      
+        self$grafica <- ggplot(sankey_long,
+           aes(x = x, next_x = next_x,
+               node = node, next_node = next_node,
+               value = value,
+               fill = node)) +   # los flujos toman color del nodo
+        geom_sankey(flow.alpha = 0.9, color = NA) +   
+        geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
+        scale_fill_manual(values = paleta, na.value = "grey90") +  # usa paleta, gris claro para extras
+        scale_y_continuous(breaks = NULL) +
+        labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                       "Sin pregunta definida", 
+                       self$tbl$pregunta[1]))+  
+        theme_void() +
+        self$tema 
+          
         return(self$grafica)
+      },
+    
+    #############################
+    
+    
+    ################################### Procesar nubes ###################################
+    
+    #' Aplica el método multirespuesta para poder calcular las frecuencias y porcentajes 
+    #' de cada categoría y los asignarlos en la `self$tbl`
+    #'
+    
+    procesar_nubes = function(codigo,confint = F){
+    
+      self$contar_variable_multirespuesta(
+        variable = paste("categoria", codigo, sep = "_"),
+        sep = ">>>",
+        confint
+      ) 
+    },
+    
+    ################################### Graficar nube ###################################
+    
+    #' Grafica la nube de las categorias previemente procesadas
+    #'
+    #' @return Nube de palabras.
+    
+    
+    graficar_nube = function(max_size = 15,n=5, gradiente = c(bajo = "#ca4992", alto = "#5B1AA4")){
+    
+      self$grafica <- self$tbl |> filter(
+          !respuesta %in% c("categoría inventada", "sin_categoria"),
+          n >= !!n) |> 
+        mutate(respuesta = str_to_sentence(respuesta)) |>
+        ggplot(aes(label = respuesta, size = n, color = n)) +
+        geom_text_wordcloud() +
+        scale_size_area(max_size = max_size) +
+        scale_color_gradient(low = gradiente["bajo"], high = gradiente["alto"]) +
+        tema_morant()
+      return(self$grafica)
     },
 
-
-
-################################### Grafica Sankey  ###################################
-  
-#' Genera un diagrama de Sankey a partir de la tabla de la clase
-#'
-#' Esta función toma la tabla `self$tbl` y construye un diagrama de Sankey
-#' que muestra los flujos desde una variable de agrupación (`grupo`) hacia 
-#' las respuestas (`respuesta`), con pesos definidos por una métrica (`freq`).
-#'
-#' `grupo` Nombre de la columna que se usará como primer nodo (ej. "sexo").
-#' `freq` Nombre de la columna numérica que define el grosor de los flujos 
-#'        (por defecto "media").
-#'
-#' @return La gráfica Sankey.
-    
-  graficar_sankey = function(grupo,freq = "media"){
-  
-    sankey_df <- self$tbl %>%
-    select(grupo, respuesta, !!sym(freq))
-  
-    sankey_long <- sankey_df %>%
-    make_long(grupo, respuesta, value = !!sym(freq))
-  
-    paleta <- setNames(self$colores$color, self$colores$respuesta)
-
-    self$grafica <- ggplot(sankey_long,
-       aes(x = x, next_x = next_x,
-           node = node, next_node = next_node,
-           value = value,
-           fill = node)) +   # los flujos toman color del nodo
-    geom_sankey(flow.alpha = 0.9, color = NA) +   
-    geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
-    scale_fill_manual(values = paleta, na.value = "grey90") +  # usa paleta, gris claro para extras
-    scale_y_continuous(breaks = NULL) +
-    labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
-                   "Sin pregunta definida", 
-                   self$tbl$pregunta[1]))+  
-    theme_void() +
-    self$tema 
-    
-    return(self$grafica)
-  },
-
-#############################
-
-  
   
     #' Graficar Bloque
     #'
