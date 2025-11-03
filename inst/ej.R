@@ -25,6 +25,14 @@ library(ggalluvial)
 
 
 devtools::load_all(path = "../morantviz/") 
+#library(morantviz)
+
+library(stringr)
+library(tidyr)
+library(ggalluvial)
+
+
+devtools::load_all(path = "../morantviz/") 
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -70,12 +78,14 @@ g$
   pegar_diccionario()$
   pegar_color()$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
-  # reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)
+  reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)$
   reordenar_columna(columna = "nombre", tipo = "asc")
 
 g$tbl$nombre
 
 g$graficar_barras_h(x = "nombre")
+
+g$tbl
 
 
 # opinión barras facet ----------------------------------------------------
@@ -83,9 +93,10 @@ g$graficar_barras_h(x = "nombre")
 g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$
-  pegar_color()$
+  pegar_color()
   reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala", "Ns/Nc"))$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
+
 
 g$graficar_barras_h(x = "respuesta") +
   facet_wrap(~nombre)
@@ -240,27 +251,6 @@ g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_de
 
 
 
+
+
 g$tbl
-
-#Graficar Bloques Con Facet-------------------------------
-library("stringr")
-g$contar_variables_porGrupos(variables = c("identificacion_partido"),
-                             grupos = c("sexo"), confint = F)
-g$pegar_color()
-g$envolver_etiquetas(columna = "respuesta", 10)
-g$pegar_diccionario()
-
-library("treemapify")
-
-g$graficar_bloque(freq = "media") +
-  facet_wrap(~sexo) +
-  labs(title = "Grafica de bloques de identificación de partidos por sexo") 
-
-#Graficar Bloques -------------------------------
-
-g$contar_variables(variables = c("identificacion_partido"))
-g$pegar_color()
-g$pegar_diccionario()
-
-g$graficar_bloque(freq = "media")
-

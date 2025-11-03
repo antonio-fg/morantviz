@@ -309,7 +309,19 @@ Graficar <- R6::R6Class(
     #'
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
     #' Volví a utilizar la función inicial de pegar_color()
+    #' Volví a utilizar la función inicial de pegar_color()
     #' @examples
+   # pegar_color = function(columna="respuesta"){
+   #   self$tbl <- self$tbl |>
+   #     columna_sym <- rlang::sym(columna)
+   #     dplyr::left_join(self$colores, dplyr::join_by(!!columna_sym)) |>
+   #     dplyr::mutate(color = dplyr::if_else(is.na(color), self$color_principal, color))
+   #   invisible(self)
+   # },
+
+    pegar_color = function(columna = "respuesta") { 
+      columna_sym <- rlang::sym(columna)
+    
    # pegar_color = function(columna="respuesta"){
    #   self$tbl <- self$tbl |>
    #     columna_sym <- rlang::sym(columna)
@@ -331,8 +343,18 @@ Graficar <- R6::R6Class(
           )
         )
       
+        dplyr::left_join(self$colores, dplyr::join_by(!!columna_sym)) |>
+        dplyr::mutate(
+          color = dplyr::if_else(
+            is.na(.data$color),
+            self$color_principal,
+            .data$color
+          )
+        )
+      
       invisible(self)
     },
+
 
 
     #' Agregar saldo por grupo
@@ -340,6 +362,7 @@ Graficar <- R6::R6Class(
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
+    agregar_saldo = function(por, freq = "media"){ 
     agregar_saldo = function(por, freq = "media"){ 
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(!!rlang::sym(freq)), .by = !!rlang::sym(por))
@@ -366,6 +389,106 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
+
+
+################################### Graficar Líneas  ###################################
+
+#' Genera una gráfica de líneas para una variable
+#'
+#' Esta función toma la tabla `self$tbl` y construye una gráfica de líneas
+#' donde el eje X corresponde a la variable `x`, el eje Y corresponde a la 
+#' métrica definida en `freq`, y las líneas se agrupan por la columna `codigo`.
+#'
+#' Además, se añaden puntos, etiquetas de porcentaje sobre los valores,
+#' y se aplica el tema corporativo definido en la clase.
+#'
+#'  `x` Nombre de la columna que se usará en el eje X (ej. "respuesta").
+#' `freq` Nombre de la columna numérica que define el eje Y 
+#'        (por defecto "media").
+#'
+#' @return La gráfica de líneas
+#'
+
+  graficar_lineas = function(
+      x,
+      freq = "media",
+      color = "color"
+      ){
+        group = "codigo"  
+
+        aes_args <- aes(
+          x = !!sym(x), 
+          y = !!sym(freq), 
+          group = !!sym(group), 
+          color = color   # 🔑 Usar columna self$tbl$color
+        )
+
+        self$grafica <- self$tbl |> 
+          ggplot(aes_args) +
+          geom_line(linewidth = 1) +
+          geom_point(size = 3) +
+          geom_text(aes(label = scales::percent(media, accuracy = 1)),
+                    size = 5, hjust = -.1,
+                    family = self$tema$text$family,
+                    vjust = -1, color = "black") +
+          scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                             limits = c(0,1)) +
+          labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                                "Sin pregunta definida", 
+                                self$tbl$pregunta[1])) +
+          self$tema
+
+        return(self$grafica)
+    },
+
+
+
+################################### Grafica Sankey  ###################################
+  
+#' Genera un diagrama de Sankey a partir de la tabla de la clase
+#'
+#' Esta función toma la tabla `self$tbl` y construye un diagrama de Sankey
+#' que muestra los flujos desde una variable de agrupación (`grupo`) hacia 
+#' las respuestas (`respuesta`), con pesos definidos por una métrica (`freq`).
+#'
+#' `grupo` Nombre de la columna que se usará como primer nodo (ej. "sexo").
+#' `freq` Nombre de la columna numérica que define el grosor de los flujos 
+#'        (por defecto "media").
+#'
+#' @return La gráfica Sankey.
+    
+  graficar_sankey = function(grupo,freq = "media"){
+  
+    sankey_df <- self$tbl %>%
+    select(grupo, respuesta, !!sym(freq))
+  
+    sankey_long <- sankey_df %>%
+    make_long(grupo, respuesta, value = !!sym(freq))
+  
+    paleta <- setNames(self$colores$color, self$colores$respuesta)
+
+    self$grafica <- ggplot(sankey_long,
+       aes(x = x, next_x = next_x,
+           node = node, next_node = next_node,
+           value = value,
+           fill = node)) +   # los flujos toman color del nodo
+    geom_sankey(flow.alpha = 0.9, color = NA) +   
+    geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
+    scale_fill_manual(values = paleta, na.value = "grey90") +  # usa paleta, gris claro para extras
+    scale_y_continuous(breaks = NULL) +
+    labs(caption = ifelse(is.na(self$tbl$pregunta[1]), 
+                   "Sin pregunta definida", 
+                   self$tbl$pregunta[1]))+  
+    theme_void() +
+    self$tema 
+    
+    return(self$grafica)
+  },
+
+#############################
+
+  
+  
 
 
     ################################### Graficar Líneas  ###################################
@@ -617,6 +740,56 @@ Encuesta <- R6::R6Class(
     initialize = function(diseno = NULL, bd = NULL, diccionario, colores, color_principal, tema){
       super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
+
+    ################################### Función máximo  ###################################
+ 
+    #' Resalta el valor máximo de una métrica 
+    #'
+    #' Esta función modifica la columna `color` de `self$tbl`, asignando 
+    #' un color especial (`col_max`) a la fila que contiene el valor máximo
+    #' de la variable indicada en `freq`.
+
+      color_maximo = function(col_max,freq="media") {
+
+      self$tbl <- self$tbl |> mutate(color = dplyr::if_else(!!rlang::sym(freq) == max(!!rlang::sym(freq)), !!col_max, color))  
+
+      invisible(self)
+      },
+
+    ##############
+
+    ################################### función de degradado continuo ###################################
+
+    #' Asigna un degradado de colores continuo a una métrica
+    #'
+    #' Esta función aplica una escala de color continua a la columna indicada 
+    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado 
+    #' entre los colores definidos en `colores_base`. 
+    #' 
+    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el 
+    #' valor máximo con ese color (utilizando `self$color_maximo`).
+    #' 
+
+    degradado_continuo = function(colores_base,col_max = "",freq='media') {
+    
+    
+      escala_color <- scales::col_numeric(
+      palette = colores_base,
+      domain = range(self$tbl[[freq]], na.rm = TRUE))
+      
+      #  Asignar color continuo a cada valor de 'media'
+      self$tbl <- self$tbl |>
+        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
+      
+     # Color max
+      if (col_max != "") {
+        self$color_maximo(col_max, freq = freq)
+      }
+    
+      invisible(self)
+    },
+    
+    #################
 
     ################################### Función máximo  ###################################
  
