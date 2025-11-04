@@ -1,5 +1,6 @@
+
 # usethis::use_mit_license( "Emilio Morones" )  # You can set another license here
-usethis::use_readme_rmd( open = FALSE )
+# usethis::use_readme_rmd( open = FALSE )
 # usethis::use_code_of_conduct()
 # usethis::use_lifecycle_badge( "Experimental" )
 # usethis::use_news_md( open = FALSE )
@@ -24,15 +25,7 @@ library(tidyr)
 library(ggalluvial)
 
 
-devtools::load_all(path = "../morantviz/") 
-#library(morantviz)
-
-library(stringr)
-library(tidyr)
-library(ggalluvial)
-
-
-devtools::load_all(path = "../morantviz/") 
+devtools::load_all(path = "../morantviz/")
 
 dicc <- tibble::tribble(~codigo, ~nombre, ~pregunta,
                         "conoce_pm_astiazaran", "Astiazarán", "Conoce o ha escuchado de (...)",
@@ -64,12 +57,14 @@ colores <- tibble::tribble(~respuesta, ~color,
                            "Ninguno", "#34495E",
                            "Otros", "#c1cbccff")
 
-g <- Encuesta$new(diseno = diseno_demo,
-                  diccionario = dicc,
-                  colores = colores,
-                  color_principal = "pink",
-                  tema = tema_morant())
 
+
+rm(g)
+g <- Encuesta$new(diseno = diseno_demo,
+                diccionario = dicc,
+                colores = colores,
+                color_principal = "pink",
+                tema = tema_morant())
 # conocimiento barras horizontal ------------------------------------------
 
 g$
@@ -93,13 +88,69 @@ g$tbl
 g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$
-  pegar_color()
-  reordenar_columna(columna = "respuesta", tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala", "Ns/Nc"))$
+  pegar_color()$
+  reordenar_columna(columna = "respuesta", tipo = "manual", c("Buena", "Regular", "Mala", "Muy mala", "Ns/Nc",))$
   reordenar_columna(columna = "nombre", tipo = "manual", c("Del Río", "Astiazarán"))
 
 
 g$graficar_barras_h(x = "respuesta") +
   facet_wrap(~nombre)
+
+####ejemplo barras verticales
+g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
+g$pegar_color()
+g$graficar_barras_v(x = "respuesta")
+
+
+#ejemplo lollipops
+g$contar_variables(variables = c( "opinion_pm_delrio"), confint = F)$
+  pegar_diccionario()$
+  pegar_color()
+
+
+g$graficar_lollipops("respuesta")+
+  tema_morant(base_family = "KuFam")+
+  facet_wrap(~nombre)
+
+####ejemplo barras verticales
+g$contar_variables(variables = "opinion_pm_astiazaran", confint = T)
+g$pegar_color()
+g$graficar_barras_v(x = "respuesta")
+
+
+
+g$contar_variables(variables = "conoce_pm_javier", confint = T)
+g$tbl
+g$pegar_color()
+g$tbl
+g$graficar_gauge()
+
+g$contar_variables(variables = "conoce_pm_astiazaran", confint = T)
+g$tbl
+g$filtrar_respuesta(variable = "respuesta", valor ="Sí")
+g$tbl
+g$pegar_color()
+g$tbl
+g$graficar_gauge() +
+  labs(title = "ejemplo", caption =  "caption")+
+  theme(plot.title = element_text(family = "KuFam", size = 25))
+
+
+
+
+######Pirámide
+g$contar_variables_porGrupos(variables = c("rango_edad"),
+                             grupos = c("sexo"), confint = F)
+g$tbl<-g$tbl |>
+  mutate(respuesta =
+    case_when(respuesta == "18A24" ~ "18-24",
+  respuesta == "25A39" ~ "25-39",
+  respuesta == "40A59" ~ "40-59",
+  respuesta == "60YMAS" ~ "60+",
+ TRUE ~respuesta))
+
+
+g$graficar_piramide(espaciado = c(0.05,0.05))
 
 
 # opinión barras divergente ------------------------------------------------
@@ -242,9 +293,14 @@ g$
 g$tbl
 
 
-
+diseno_demo$variables |> glimpse()
 # cruce -------------------------------------------------------------------
 
+g$contar_variables_porGrupos(variables = c("rango_edad"),
+                             grupos = c("sexo"), confint = F)
+g$tbl
+
+# multirespuesta ----------------------------------------------------------
 g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio"),
                              grupos = c("sexo", "region"), confint = F)
 
@@ -254,3 +310,71 @@ g$contar_variables_porGrupos(variables = c("conoce_pm_astiazaran", "conoce_pm_de
 
 
 g$tbl
+
+
+
+
+# graficar waffle cruzado ----------------------------------
+
+g$
+  contar_variables_porGrupos(variables = c("conoce_pm_astiazaran","conoce_pm_delrio","conoce_pm_lia", "conoce_pm_javier"),
+                             grupos = c("region"), confint = F)$
+  filtrar_respuesta(valor = c("Sí"))$
+  pegar_diccionario()$
+  pegar_color()
+
+g$reordenar_columna(columna = "nombre", tipo = "manual", orden)
+g$generar_coordenadas(
+  eje_x = "region",
+  eje_y = "nombre",
+  valor = "media"
+)
+
+g$graficar_waffle(
+  nombre_x = "Región",
+  eje_x = "region",
+  eje_y = "nombre"
+)
+
+
+# graficar waffle una variable ------------------------------
+g$contar_variables(variables = c(
+  "opinion_pm_astiazaran", "opinion_pm_delrio"), confint = T)
+g$pegar_diccionario()
+g$tbl
+g$pegar_color()
+g$tbl
+g$reordenar_columna(columna = "respuesta" , tipo = "manual", c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))
+
+g$generar_coordenadas(
+  eje_x = "nombre",
+  eje_y = "respuesta",
+  valor = "media"
+)
+
+g$graficar_waffle(
+  eje_x = "nombre",
+  eje_y = "respuesta"
+)
+#Graficar Bloques Con Facet-------------------------------
+library("stringr")
+g$contar_variables_porGrupos(variables = c("identificacion_partido"),
+                             grupos = c("sexo"), confint = F)
+g$pegar_color()
+g$envolver_etiquetas(columna = "respuesta", 10)
+g$pegar_diccionario()
+
+library("treemapify")
+
+g$graficar_bloque(freq = "media") +
+  facet_wrap(~sexo) +
+  labs(title = "Grafica de bloques de identificación de partidos por sexo")
+
+#Graficar Bloques -------------------------------
+
+g$contar_variables(variables = c("identificacion_partido"))
+g$pegar_color()
+g$pegar_diccionario()
+
+g$graficar_bloque(freq = "media")
+
