@@ -786,6 +786,44 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
+    ################################### Procesar nubes ###################################
+    
+    #' Aplica el método multirespuesta para poder calcular las frecuencias y porcentajes 
+    #' de cada categoría y los asignarlos en la `self$tbl`
+    #'
+    
+    procesar_nubes = function(codigo,confint = F){
+    
+      self$contar_variable_multirespuesta(
+        variable = paste("categoria", codigo, sep = "_"),
+        sep = ">>>",
+        confint
+      ) 
+    },
+    
+    ################################### Graficar nube ###################################
+    
+    #' Grafica la nube de las categorias previemente procesadas
+    #'
+    #' @return Nube de palabras.
+    
+    
+    graficar_nube = function(max_size = 15,n=5, gradiente = c(bajo = "#ca4992", alto = "#5B1AA4")){
+    
+      self$grafica <- self$tbl |> filter(
+          !respuesta %in% c("categoría inventada", "sin_categoria"),
+          n >= !!n) |> 
+        mutate(respuesta = str_to_sentence(respuesta)) |>
+        ggplot(aes(label = respuesta, size = n, color = n)) +
+        geom_text_wordcloud() +
+        scale_size_area(max_size = max_size) +
+        scale_color_gradient(low = gradiente["bajo"], high = gradiente["alto"]) +
+        tema_morant()
+      return(self$grafica)
+    },
+
+    
+
     #############################
 
     #' Graficar Bloque
