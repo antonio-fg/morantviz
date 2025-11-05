@@ -398,7 +398,7 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x, y = "media") {
+    graficar_barras_h = function(x, y = "media",letra_tam = 5, hjust =  -.1 ) {
       self$grafica <- ggplot2::ggplot(
         self$tbl,
         ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))
@@ -406,8 +406,8 @@ Graficar <- R6::R6Class(
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color)) +
         ggplot2::geom_text(
           ggplot2::aes(label = scales::percent(!!rlang::sym(y))),
-          size = 5,
-          hjust = -.1,
+          size = letra_tam,
+          hjust = hjust,
           family = self$tema$text$family
         ) +
         ggplot2::coord_flip() +
@@ -427,7 +427,7 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_v("nombre")
-    graficar_barras_v = function(x, y = "media") {
+    graficar_barras_v = function(x, y = "media", letra_tam = 5, vjust = -.1) {
       self$grafica <- ggplot2::ggplot(
         self$tbl,
         ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))
@@ -435,8 +435,8 @@ Graficar <- R6::R6Class(
         ggchicklet::geom_chicklet(ggplot2::aes(fill = color), width = 0.8) +
         ggplot2::geom_text(
           ggplot2::aes(label = scales::percent(!!rlang::sym(y), accuracy = 1)),
-          size = 5,
-          vjust = -.1,
+          size = letra_tam,
+          vjust = vjust,
           family = self$tema$text$family
         ) +
         ggplot2::labs(caption = self$tbl$pregunta[1]) +
@@ -455,7 +455,7 @@ Graficar <- R6::R6Class(
     #' @
     #' g$graficar_gauge("nombre")
 
-    graficar_gauge = function() {
+    graficar_gauge = function(letra_tam = 12) {
       valor <- self$tbl |>
         dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
         dplyr::pull(media)
@@ -471,7 +471,7 @@ Graficar <- R6::R6Class(
           x = 0,
           y = 0,
           label = base::paste0(scales::percent(valor, accuracy = 1)),
-          size = 12,
+          size = letra_tam ,
           fontface = "bold",
           color = "black"
         )
@@ -621,8 +621,8 @@ Graficar <- R6::R6Class(
     #' @param x Variable en el eje y.
     #' @return Objeto `ggplot`.
     #' @
-    #' g$graficar_lollipops("respuesta")
-    graficar_lollipops = function(x, y = "media") {
+    #' g$graficar_lollipops("respuesta") 
+    graficar_lollipops = function(x, y = "media", letra_tam = 6, hjust = -0.5, bola_tam = 5) {
       self$grafica <- self$tbl |>
         ggplot2::ggplot(ggplot2::aes(
           x = stats::reorder(!!rlang::sym(x), !!rlang::sym(y)),
@@ -633,11 +633,11 @@ Graficar <- R6::R6Class(
           ggplot2::aes(xend = !!rlang::sym(x), y = 0, yend = !!rlang::sym(y)),
           linewidth = 1
         ) +
-        ggplot2::geom_point(size = 5) +
+        ggplot2::geom_point(size = bola_tam) +
         ggplot2::geom_text(
           ggplot2::aes(label = scales::percent(!!rlang::sym(y), accuracy = 1.)),
-          size = 6,
-          hjust = -0.5,
+          size = letra_tam,
+          hjust = hjust,
           color = "black"
         ) +
         ggplot2::coord_flip() +
@@ -649,29 +649,29 @@ Graficar <- R6::R6Class(
           labels = scales::percent_format()
         ) +
         ggplot2::scale_color_identity(guide = "none") +
-        ggplot2::labs(title = " ") +
-        self$tema +
-        ggplot2::theme(
-          plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-          axis.text.y = ggplot2::element_text(
-            size = 15,
-            family = self$tema$text$family
-          ),
-          panel.grid.major.y = ggplot2::element_blank(),
-          panel.grid.minor = ggplot2::element_blank(),
-          plot.background = ggplot2::element_rect(
-            color = "transparent",
-            fill = "transparent"
-          ),
-          panel.background = ggplot2::element_rect(
-            color = "transparent",
-            fill = "transparent"
-          ),
-          legend.background = ggplot2::element_rect(
-            color = "transparent",
-            fill = "transparent"
-          )
-        )
+        #ggplot2::labs(title = " ") +
+        ggplot2::labs(caption = g$tbl$pregunta[1]) +
+        self$tema  
+        #ggplot2::theme(
+        #  plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+        #  axis.text.y = ggplot2::element_text(
+        #    size = 15,
+        #    family = self$tema$text$family
+        #  ),
+        #  panel.grid.major.y = ggplot2::element_blank(),
+        #  panel.grid.minor = ggplot2::element_blank(),
+        #  plot.background = ggplot2::element_rect(
+        #    color = "transparent",
+        #    fill = "transparent"
+        #  ),
+        #  panel.background = ggplot2::element_rect(
+        #    color = "transparent",
+        #    fill = "transparent"
+        #  ),
+        #  legend.background = ggplot2::element_rect(
+        #    color = "transparent",
+        #    fill = "transparent"
+        #  )
       return(self$grafica)
     },
 
@@ -696,27 +696,32 @@ Graficar <- R6::R6Class(
     graficar_lineas = function(
       x,
       freq = "media",
-      color = "color"
-    ) {
+      color = "color",
+      letra_tam = 5,
+      hjust =  -.1,
+      vjust = -1,
+      bola_tam = 3,
       group = "codigo"
+    ) {
+      
 
       aes_args <- aes(
         x = !!sym(x),
         y = !!sym(freq),
         group = !!sym(group),
-        color = color # 🔑 Usar columna self$tbl$color
+        color = color 
       )
 
       self$grafica <- self$tbl |>
         ggplot(aes_args) +
         geom_line(linewidth = 1) +
-        geom_point(size = 3) +
+        geom_point(size = bola_tam) +
         geom_text(
           aes(label = scales::percent(media, accuracy = 1)),
-          size = 5,
-          hjust = -.1,
+          size = letra_tam,
+          hjust = hjust,
           family = self$tema$text$family,
-          vjust = -1,
+          vjust = vjust,
           color = "black"
         ) +
         scale_y_continuous(
@@ -749,7 +754,7 @@ Graficar <- R6::R6Class(
     #'
     #' @return La gráfica Sankey.
 
-    graficar_sankey = function(grupo, freq = "media") {
+    graficar_sankey = function(grupo, freq = "media",letra_tam = 3.5) {
       sankey_df <- self$tbl %>%
         select(grupo, respuesta, !!sym(freq))
 
@@ -770,7 +775,7 @@ Graficar <- R6::R6Class(
         )
       ) + # los flujos toman color del nodo
         geom_sankey(flow.alpha = 0.9, color = NA) +
-        geom_sankey_label(aes(label = node), size = 3.5, color = "black") +
+        geom_sankey_label(aes(label = node), size = letra_tam, color = "black") +
         scale_fill_manual(values = paleta, na.value = "grey90") + # usa paleta, gris claro para extras
         scale_y_continuous(breaks = NULL) +
         labs(
@@ -836,7 +841,7 @@ Graficar <- R6::R6Class(
     #' @return
     #' Objeto `ggplot2::ggplot`. Se almacena en `self$grafica` y se retorna
     #' para permitir manipulaciones adicionales o guardado.
-    graficar_bloque = function(freq = "media") {
+    graficar_bloque = function(freq = "media", letra_tam = 2) {
       # Crear la gráfica
       # Crear símbolo una sola vez
 
@@ -844,7 +849,7 @@ Graficar <- R6::R6Class(
         self$tbl,
         aes(area = !!rlang::sym(freq), fill = color)
       ) +
-        geom_treemap(color = "white", size = 2) +
+        geom_treemap(color = "white", size = letra_tam) +
         geom_treemap_text(
           aes(
             label = paste0(
@@ -882,6 +887,8 @@ Graficar <- R6::R6Class(
       regular,
       positivas,
       negativas,
+      letra_tam = 25,
+      vjust = .5,
       y = "media"
     ) {
       self$grafica <- self$tbl |>
@@ -899,9 +906,9 @@ Graficar <- R6::R6Class(
         )) +
         ggfittext::geom_fit_text(
           ggplot2::aes(label = etiqueta),
-          size = 25,
-          position = ggplot2::position_stack(.5, reverse = TRUE),
-          vjust = .5,
+          size = letra_tam,
+          position = ggplot2::position_stack(.5, reverse = TRUE), #posición del porcentaje, centro 
+          vjust = vjust,
           contrast = TRUE,
           show.legend = FALSE,
           family = self$tema$text$family
@@ -1044,6 +1051,7 @@ Graficar <- R6::R6Class(
       escala_color = c(low = "#9d7ad240", high = "#9d7ad2"),
       eje_x = "grupo",
       eje_y = "base_y",
+
       caption = NULL
     ) {
       stopifnot(!is.null(self$tbl))
@@ -1119,7 +1127,7 @@ Graficar <- R6::R6Class(
 #' @export
 #'
 #' @examples
-#' \dontrun{
+#' \dontrun {
 #' g <- Encuesta$new(
 #'   diseno = encuesta_demo$muestra$diseno,
 #'   diccionario = dicc,
@@ -1283,8 +1291,13 @@ Encuesta <- R6::R6Class(
       actores,
       positivas,
       negativas,
-      regular
-    ) {
+      regular,
+      letra_tam = 5, 
+      hjust =  -.1,
+      vjust = .5,
+      y = "media"
+    ) 
+    {
       # --- Opinión ---
       opinion <- paste(sufijo_opinion, actores, sep = "_")
       super$contar_variables(
@@ -1305,7 +1318,9 @@ Encuesta <- R6::R6Class(
       op <- super$graficar_barras_divergente(
         regular = regular,
         positivas = rev(positivas),
-        negativas = negativas
+        negativas = negativas,
+        letra_tam = letra_tam,
+        vjust = vjust
       )
 
       orden <- self$tbl$nombre |> levels()
@@ -1332,7 +1347,8 @@ Encuesta <- R6::R6Class(
         ) +
         ggfittext::geom_fit_text(
           ggplot2::aes(label = scales::percent(media, 1)),
-          contrast = TRUE
+          contrast = TRUE,
+          size = letra_tam
         ) +
         ggplot2::coord_flip() +
         ggplot2::labs(x = NULL, y = NULL, title = "Conocimiento") +
@@ -1355,7 +1371,8 @@ Encuesta <- R6::R6Class(
         orden
       )
 
-      ns_nc <- super$graficar_barras_h(x = "nombre") +
+        ns_nc <- super$graficar_barras_h(x = "nombre", y = y, letra_tam = letra_tam,
+        hjust = hjust) +
         ggplot2::theme_void() +
         ggplot2::labs(caption = NULL, title = "No sabe / No contesta") +
         ggplot2::theme(text = ggplot2::element_text(family = "Poppins"))
