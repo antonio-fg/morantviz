@@ -5,7 +5,7 @@
 
 # La actualización de la parametrización de las visualizaciones permite modificar el tamaño y posiciones
 # de las letras detro de todas las gráficas de MorantViz con excepción de la grafica de Waffle. 
-# En este script de ejemplo, se muestra una comparación entre las gráficas con sus valores predeterminados (panal izquierdo) y 
+# En este script de ejemplo, se muestra una comparación entre las gráficas con sus valores predeterminados (panel izquierdo) y 
 # con la nueva parametrización (panel derecho). 
 
 library(stringr)
@@ -233,8 +233,7 @@ g$
   pegar_color()$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
   reordenar_columna(columna = "nombre", tipo = "asc")$
-  graficar_barras_h(x = "nombre",letra_tam = 5, hjust =  -.1) + labs(title = "Valores predeteminados") 
-+
+  graficar_barras_h(x = "nombre",letra_tam = 5, hjust =  -.1) + labs(title = "Valores predeteminados") +
   g$
   contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
   filtrar_respuesta(valor = "Sí")$

@@ -55,7 +55,6 @@ Graficar <- R6::R6Class(
     color_principal = NULL,
     #' @field tema Tema de `ggplot` a aplicar en las gráficas.
     tema = NULL,
-    n = NULL, # Frecuencia de categoria para graficar nube
 
     #' Inicializar objeto Graficar
     #'
