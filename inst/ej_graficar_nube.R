@@ -1,3 +1,11 @@
+######################################################################
+# Nube de palabras
+######################################################################
+
+# La actualización de la nube de palabras permite graficar las categorias generadas por el modelo de categorización (bot).
+# Es importante aclarar que las categorias asociadas a las respuestas están previamente cargadas en la base de datos 
+# antes de inicializar el objeto "g". 
+
 
 library(tibble)
 library(tidyr)
