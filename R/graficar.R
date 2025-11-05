@@ -1221,55 +1221,7 @@ Encuesta <- R6::R6Class(
 
     #################
 
-    ################################### Función máximo  ###################################
- 
-    #' Resalta el valor máximo de una métrica 
-    #'
-    #' Esta función modifica la columna `color` de `self$tbl`, asignando 
-    #' un color especial (`col_max`) a la fila que contiene el valor máximo
-    #' de la variable indicada en `freq`.
-
-      color_maximo = function(col_max,freq="media") {
-
-      self$tbl <- self$tbl |> mutate(color = dplyr::if_else(!!rlang::sym(freq) == max(!!rlang::sym(freq)), !!col_max, color))  
-
-      invisible(self)
-      },
-
-    ##############
-
-    ################################### función de degradado continuo ###################################
-
-    #' Asigna un degradado de colores continuo a una métrica
-    #'
-    #' Esta función aplica una escala de color continua a la columna indicada 
-    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado 
-    #' entre los colores definidos en `colores_base`. 
-    #' 
-    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el 
-    #' valor máximo con ese color (utilizando `self$color_maximo`).
-    #' 
-
-    degradado_continuo = function(colores_base,col_max = "",freq='media') {
     
-    
-      escala_color <- scales::col_numeric(
-      palette = colores_base,
-      domain = range(self$tbl[[freq]], na.rm = TRUE))
-      
-      #  Asignar color continuo a cada valor de 'media'
-      self$tbl <- self$tbl |>
-        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
-      
-     # Color max
-      if (col_max != "") {
-        self$color_maximo(col_max, freq = freq)
-      }
-    
-      invisible(self)
-    },
-    
-    #################
 
     #' Graficar saldos de opinión y conocimiento
     #'
