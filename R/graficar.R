@@ -379,6 +379,23 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
+    pegar_colorPorGrupo = function (col = "codigo") {
+      color_grupo <- self$colores |> 
+        rename(!!sym(col) := respuesta)
+
+      self$tbl <- self$tbl |> 
+        left_join(color_grupo, by = col) |> 
+        mutate(
+        color = if_else(
+              is.na(.data$color),
+              self$color_principal,
+              .data$color
+            )
+          )
+      invisible(self)
+    },
+
+
     #' Agregar saldo por grupo
     #'
     #' @param por Variable de agrupación.
