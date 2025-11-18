@@ -55,6 +55,7 @@ Graficar <- R6::R6Class(
     color_principal = NULL,
     #' @field tema Tema de `ggplot` a aplicar en las gráficas.
     tema = NULL,
+    niveles_ordenados = NULL,
 
     #' Inicializar objeto Graficar
     #'
@@ -73,7 +74,8 @@ Graficar <- R6::R6Class(
       diccionario,
       colores,
       color_principal,
-      tema
+      tema,
+      niveles_ordenados
     ) {
       if (!is.null(diseno)) {
         self$diseno <- diseno
@@ -405,6 +407,62 @@ Graficar <- R6::R6Class(
       self$tbl <- self$tbl |>
         dplyr::mutate(saldo = sum(!!rlang::sym(freq)), .by = !!rlang::sym(por))
       invisible(self)
+    },
+
+    ################################### Método de extraer respuestas ###################################
+    
+    extraer_respuestas = function(codigo) {
+
+      # Extrae niveles ordenados desde el diccionario
+      niveles_ordenados <- self$diccionario |>
+        dplyr::filter(.data$codigo %in% .env$codigo) |>
+        dplyr::pull(respuestas) |>
+        stringr::str_split("_") |>
+        purrr::pluck(1)
+
+      # Guardarlos como atributo del objeto
+      self$niveles_ordenados <- niveles_ordenados
+
+      # Defini qué columnas queremos rellenar (si existen)
+      columnas_contexto <- intersect(
+        c("codigo", "nombre", "pregunta", "respuestas"),
+        colnames(self$tbl)
+      )
+    
+      # Completar por cada código si existe la columna 'codigo'
+      self$tbl <- self$tbl |>
+        (\(df) {
+          if ("codigo" %in% names(df)) {
+            df |>
+              dplyr::group_by(codigo) |>
+              tidyr::complete(respuesta = niveles_ordenados,
+                              fill = list(n = 0)) |>
+              dplyr::ungroup()
+          } else {
+            df |>
+              tidyr::complete(respuesta = niveles_ordenados,
+                              fill = list(n = 0))
+          }
+        })() |>
+        
+        # Si hay columnas de contexto, rellenarlas; si no, dejar tal cual
+        (\(df) {
+          if (length(columnas_contexto) > 0) {
+            df |>
+              tidyr::fill(dplyr::all_of(columnas_contexto), .direction = "downup")
+          } else {
+            df
+          }
+        })() |>
+        # n y pct en 0 donde haya NA
+        dplyr::mutate(
+          dplyr::across(
+            dplyr::any_of(c("n", "pct")),
+            ~ tidyr::replace_na(.x, 0)
+          )
+        )
+
+    invisible(self)
     },
 
     #' Graficar barras horizontales
