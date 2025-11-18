@@ -1120,7 +1120,7 @@ Graficar <- R6::R6Class(
       #niveles_x: toma los valores únicos de la columna eje_x para mantener el orden de los niveles en el eje X.
       #niveles_y: agrupa por eje_y,  extrae los valores de la columna eje_y
 
-      niveles_x <- levels(df[[eje_x]])
+      niveles_x <- df %>% dplyr::pull(!!rlang::sym(eje_x)) %>% unique() #levels(df[[eje_x]]) 
       niveles_y <- df %>%
         group_by(!!rlang::sym(eje_y)) %>%
         summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
