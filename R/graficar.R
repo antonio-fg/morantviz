@@ -709,50 +709,79 @@ Graficar <- R6::R6Class(
     #'
 
     graficar_lineas = function(
-      x,
+      x = "respuesta",
       freq = "media",
-      color = "color",
-      letra_tam = 5,
-      hjust =  -.1,
-      vjust = -1,
-      bola_tam = 3,
-      group = "codigo"
-    ) {
-      
-
-      aes_args <- aes(
-        x = !!sym(x),
-        y = !!sym(freq),
-        group = !!sym(group),
-        color = color 
+      grupo = 'codigo',
+      grupos_seleccion = NULL,
+      vjust = -0.8,
+      letra_tam = 4,
+      rango_offset = 0.0
       )
+      {
+      
+      tbl_filtrada <- self$tbl
 
-      self$grafica <- self$tbl |>
-        ggplot(aes_args) +
+      if (!is.null(grupos_seleccion)){
+        tbl_filtrada <- tbl_filtrada |> filter(!!sym(grupo) %in% grupos_seleccion)
+      }
+
+
+      tbl_filtrada <- tbl_filtrada |>
+        dplyr::group_by(!!rlang::sym(x)) |>
+        # ordena por valor dentro de cada categoría del eje X
+        dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
+        # asigna offsets simétricos alrededor de 0
+        dplyr::mutate(
+          offset_label = if (dplyr::n() == 1) {
+            0
+          } else {
+            seq(from = -rango_offset,
+                to   =  rango_offset,
+                length.out = dplyr::n())
+          },
+          y_label = !!rlang::sym(freq) + offset_label
+        ) |>
+        dplyr::ungroup()
+
+      paleta <- tbl_filtrada |>
+        distinct(!!sym(grupo), color)
+    
+      self$grafica <- tbl_filtrada |> 
+        ggplot( 
+        aes(x = !!sym(x), 
+            y = !!sym(freq), 
+            group = !!sym(grupo), 
+            color = color)) +
         geom_line(linewidth = 1) +
-        geom_point(size = bola_tam) +
-        geom_text(
-          aes(label = scales::percent(media, accuracy = 1)),
-          size = letra_tam,
-          hjust = hjust,
-          family = self$tema$text$family,
-          vjust = vjust,
-          color = "black"
+        geom_point(size = 3) +
+        geom_text(aes(y = y_label,
+                  label = scales::percent(!!sym(freq), accuracy = 1)),
+                  vjust = vjust, 
+                  size = letra_tam, 
+                  color = "black", 
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+        scale_color_identity(
+          breaks = paleta$color,              
+          labels = paleta[[grupo]],           
+          guide  = "legend" 
         ) +
-        scale_y_continuous(
-          labels = scales::percent_format(accuracy = 1),
-          limits = c(0, 1)
-        ) +
-        labs(
-          caption = ifelse(
-            is.na(self$tbl$pregunta[1]),
-            "Sin pregunta definida",
-            self$tbl$pregunta[1]
-          )
-        ) +
-        self$tema
-
-      return(self$grafica)
+        scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                           limits = c(0, 1))  +
+        self$tema +
+        ggplot2::theme(
+        legend.position  = "bottom",
+        legend.direction = "horizontal",
+        legend.title     = ggplot2::element_blank()
+          ) +
+        ggplot2::guides(
+        color = ggplot2::guide_legend(
+        nrow  = 1,
+        byrow = TRUE)) +
+          labs(
+            caption = self$tbl$pregunta[1]
+          ) 
+        return(self$grafica)
     },
 
     ################################### Grafica Sankey  ###################################
