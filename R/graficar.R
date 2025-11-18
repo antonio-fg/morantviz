@@ -784,6 +784,61 @@ Graficar <- R6::R6Class(
         return(self$grafica)
     },
 
+
+    ################################### Graficar barras apiladas ###################################
+    
+    
+    barras_apiladas = function(x,freq = "pct", letra_tam = 3.5, fill = "respuesta") {
+
+      x_var    <- sym(x)
+      freq_var <- sym(freq)
+      fill_var <- sym(fill)
+
+      # Vector nombrado: nombres = niveles de 'fill', valores = color hex
+      colores_partidos <- self$tbl |>
+        distinct(!!fill_var, color) |>       
+        arrange(!!fill_var) |>
+        deframe()                            
+
+      self$grafica <- ggplot(
+        self$tbl,
+        aes(x = !!x_var,
+            y = !!freq_var,
+            fill = !!fill_var)
+      ) +
+        geom_col(width = 0.7, color = NA) +
+        coord_flip() +
+        geom_text(
+          aes(label = ifelse(!!freq_var >= 0.05,
+                             percent(!!freq_var, accuracy = 1), "")),
+          position = position_stack(vjust = 0.5),
+          color = "white",
+          size  = letra_tam
+        ) +
+        scale_y_continuous(
+          labels = percent_format(accuracy = 1),
+          expand = c(0, 0)
+        ) +
+        scale_fill_manual(
+          values = colores_partidos,
+          drop   = FALSE,
+          breaks = names(colores_partidos),   # orden de la leyenda
+          labels = names(colores_partidos)    # texto de la leyenda
+        ) +
+        labs(
+          x = NULL, y = NULL,
+          caption = self$diccionario$pregunta[1]
+        ) +
+        self$tema +                              # tu tema base
+        theme(                                # y AQUÍ forzamos que sí haya leyenda
+          legend.position = "bottom",
+          legend.title    = element_blank()
+        )
+      
+      return(self$grafica)
+        },
+
+
     ################################### Grafica Sankey  ###################################
 
     #' Genera un diagrama de Sankey a partir de la tabla de la clase
