@@ -261,7 +261,7 @@ g <- Encuesta$new(diseno = diseno_demo,
 
 
 
-op <- g$
+g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   filtrar_respuesta(valor = c("Muy buena", "Buena", "Regular", "Mala", "Muy mala"))$
   pegar_diccionario()$
@@ -277,10 +277,10 @@ op <- g$
                               negativas = c("Mala", "Muy mala"),
                               caption = T)
 
-op 
+
 # opinión barras divergente sin regular -----------------------------------
 
-op <- g$
+g$
   contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$
   filtrar_respuesta(valor = c("Muy buena", "Buena", "Mala", "Muy mala"))$
@@ -297,7 +297,7 @@ op <- g$
                                   ancho_cap = 25,
                                   ancho_etiquetas = 1)
 
-op 
+
 
 # conocimiento con porcentaje ----------------------------------------------
 
@@ -309,44 +309,7 @@ g$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
   reordenar_columna(columna = "nombre", tipo = "manual", orden)
 
-conoc <- g$tbl |>
-  ggplot(aes(x = nombre, y = 1)) +
-  geom_tile(aes(fill = media), 
-                color = "white", 
-                show.legend = F) +
-  ggfittext::geom_fit_text(
-    aes(label = scales::percent(media, 1)), 
-    contrast = T) +
-  coord_flip() +
-  labs(x = NULL, y = NULL, title = "Conocimiento") +
-  # tema_morant() +
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank()) +
-  theme_void() +
-  theme(text = element_text(family = "Poppins"))
 
-conoc
-
-# ns/nc barras horizontal -------------------------------------------------
-
-g$
-  contar_variables(variables = c("opinion_pm_astiazaran", "opinion_pm_delrio"), confint = F)$
-  filtrar_respuesta(valor = c("Ns/Nc"))$
-  pegar_diccionario()$
-  pegar_color()$
-  reordenar_columna(columna = "nombre", tipo = "manual", orden)
-
-
-ns_nc <- g$graficar_barras_h(x = "nombre") +
-  theme_void() +
-  labs(caption = NULL, title = "No sabe / No contesta") +
-  theme(text = element_text(family = "Poppins"))
-
-
-ns_nc
-# p + conoc + ns_nc -------------------------------------------------------
-
-op + conoc + ns_nc + plot_layout(ncol = 3, widths = c(3, 1, 1))
 
 g$saldos_opinion(sufijo_opinion = "opinion_pm",
                  cat_ns_nc = "Ns/Nc",
@@ -483,6 +446,12 @@ g <- Encuesta$new(diseno = diseno_demo,
                 colores = colores,
                 color_principal = "pink",
                 tema = tema_morant())
+
+
+g$contar_variables(variables = c( "opinion_pm_delrio"), confint = F)$
+  pegar_diccionario()$
+  pegar_color()$
+  graficar_lollipops("respuesta") +
 
 g$contar_variables(variables = c( "opinion_pm_delrio"), confint = F)$
   pegar_diccionario()$

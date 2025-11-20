@@ -91,7 +91,9 @@ Graficar <- R6::R6Class(
       self$color_principal <- color_principal
     },
 
-    #' Contar variables ponderadas
+    
+    ################################### Contar variables ponderadas ###################################
+  
     #'
     #' Llama a `contar_vars_pesos` para obtener proporciones y medias.
     #'
@@ -121,7 +123,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Contar variables ponderadas por grupos
+    
+    ################################### Contar variables ponderadas por grupos ###################################
+    
     #'
     #' Llama a `contar_vars_porGrupos_pesos` para obtener proporciones y medias.
     #'
@@ -150,7 +154,10 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
-    #' Contar variable multirespuesta
+    
+    
+    ################################### Contar variable multirespuesta ###################################
+    
     #'
     #' Llama a `contar_variable_multirespuesta` para obtener proporciones de una variable multirespuesta con algún separador.
     #'
@@ -188,7 +195,9 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
-    #' Filtrar respuestas específicas
+    
+    ################################### Filtrar respuestas específicas ###################################
+    
     #'
     #' @param variable Nombre de la variable a filtrar.
     #' @param valor Valores a conservar.
@@ -201,7 +210,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Reordenar una columna
+    
+    ################################### Reordenar una columna ###################################
+    
     #'
     #' Permite reordenar factores de forma manual, ascendente, descendente o por suma.
     #'
@@ -256,7 +267,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Envolver etiquetas de texto
+    
+    ################################### Envolver etiquetas de texto ###################################
+    
     #'
     #' @param columna Columna de etiquetas.
     #' @param ancho Número máximo de caracteres por línea.
@@ -273,7 +286,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Pegar diccionario de variables
+    
+    ################################### Pegar diccionario de variables ###################################
+    
     #'
     #' Hace un `left_join` entre la tabla de resultados y el diccionario.
     #' @examples
@@ -284,7 +299,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Partir la categoría "Regular" en dos mitades
+    
+    ################################### Partir la categoría "Regular" en dos mitades ###################################
+    
     #'
     #' Divide la proporción de "Regular" en dos (positivo/negativo).
     #'
@@ -317,7 +334,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Cambiar signo a medias de categorías negativas
+    
+    ################################### Cambiar signo a medias de categorías negativas ###################################
+  
     #'
     #' @param negativo Vector de respuestas negativas.
     #' @examples
@@ -334,7 +353,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Etiquetar categoría Regular y porcentajes
+    
+    ################################### Etiquetar categoría Regular y porcentajes ###################################
+    
     #'
     #' @param regular Valor de la categoría Regular.
     #' @examples
@@ -352,7 +373,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Pegar colores
+    #
+    ################################### Pegar colores ###################################
+    
     #'
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
     #' Volví a utilizar la función inicial de pegar_color()
@@ -381,6 +404,20 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
+
+    ################################### Pegar color por grupo ###################################
+    
+    #' La función asigna a self$tbl, los colores definidos en self$colores.
+    #' Por defecto usa la columna "codigo" (las llaves) de self$tbl, ya que cada "llave" puede representar un grupo diferente, 
+    #' pero permite usar cualquier otra columna, por ejemplo "nombre" 
+    #' Si algún grupo no tiene color asignado, se le asigna automáticamente self$color_principal.
+    #' Este método es comunmente usado en "graficar lineas" (ver el ejemplo ej_graficar_lineas.R)
+    #'
+    #' @param col. Nombre de la columna de self$tbl que determina los grupos.
+    #' @examples
+    #' g$pegar_colorPorGrupo(col = "nombre")
+    #'
+    
     pegar_colorPorGrupo = function (col = "codigo") {
       color_grupo <- self$colores |> 
         rename(!!sym(col) := respuesta)
@@ -398,8 +435,8 @@ Graficar <- R6::R6Class(
     },
 
 
-    #' Agregar saldo por grupo
-    #'
+    ################################### Agregar saldo por grupo ###################################
+
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
@@ -410,10 +447,19 @@ Graficar <- R6::R6Class(
     },
 
     ################################### Método de extraer respuestas ###################################
+
+    #' Asegura que todas las respuestas definidas en el diccionario aparezcan en self$tbl,
+    #' completa niveles faltantes "codigo", "nombre", "pregunta", "respuestas",
+    #' esto con el fin de poder graficar las captions, las etiquetas correctamente.
+    #' Extrae los niveles ordenados del diccionario para un código y los usa para 
+    #' completar filas faltantes en `self$tbl` mediante `tidyr::complete()`. 
+    #' Rellena columnas de contexto y normaliza columnas numéricas (`n`, `pct`).
+    #'
+    #' @param codigo Llave usada para recuperar los niveles del diccionario.
     
     extraer_respuestas = function(codigo) {
 
-      # 1. Extraer niveles ordenados desde el diccionario
+      # Extraer niveles ordenados desde el diccionario
       niveles_ordenados <- self$diccionario |>
         dplyr::filter(.data$codigo %in% .env$codigo) |>
         dplyr::pull(respuestas) |>
@@ -422,15 +468,17 @@ Graficar <- R6::R6Class(
 
       self$niveles_ordenados <- niveles_ordenados
 
-      #Columnas de contexto
+      # Identifica las principales columnas de contexto disponibles en self$tbl, ya que puede que no existan todas
       columnas_contexto <- intersect(
         c("codigo", "nombre", "pregunta", "respuestas"),
         colnames(self$tbl)
       )
     
-      df <- self$tbl
+      df <- self$tbl # por simplicidad 
     
-      # Completar niveles por respuesta (y por código si existe)
+      # Completa las categorías faltantes según niveles_ordenados.
+      # Si existe "codigo", completa por cada llave; de lo contrario, completa globalmente.
+
       if ("codigo" %in% names(df)) {
         df <- df |>
           dplyr::group_by(codigo) |>
@@ -439,21 +487,18 @@ Graficar <- R6::R6Class(
             fill = list(n = 0)
           ) |>
           dplyr::ungroup()
-      } else {
-        df <- df |>
-          tidyr::complete(
-            respuesta = niveles_ordenados,
-            fill = list(n = 0)
-          )
-      }
-    
-      # Rellenar columnas de contexto si existen
+      } 
+
+ 
+      # Rellena los NA en las columnas de contexto: "codigo", "nombre", "pregunta", "respuestas",
+      # hacia abajo y arriba, garantizando que la columnas estén bien definidas para graficar las captions y etiquetas
+
       if (length(columnas_contexto) > 0) {
         df <- df |>
           tidyr::fill(dplyr::all_of(columnas_contexto), .direction = "downup")
       }
     
-      # n y pct en 0 donde haya NA
+      # Asegura que n y pct en 0 donde haya NA
       df <- df |>
         dplyr::mutate(
           dplyr::across(
@@ -466,7 +511,61 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Graficar barras horizontales
+    ################################### Función máximo  ###################################
+
+    #' Resalta el valor máximo de una métrica
+    #'
+    #' Esta función modifica la columna `color` de `self$tbl`, asignando
+    #' un color especial (`col_max`) a la fila que contiene el valor máximo
+    #' de la variable indicada en `freq`.
+
+    color_maximo = function(col_max, freq = "media") {
+      self$tbl <- self$tbl |>
+        mutate(
+          color = dplyr::if_else(
+            !!rlang::sym(freq) == max(!!rlang::sym(freq)),
+            !!col_max,
+            color
+          )
+        )
+
+      invisible(self)
+    },
+
+    ##############
+
+    ################################### función de degradado continuo ###################################
+
+    #' Asigna un degradado de colores continuo a una métrica
+    #'
+    #' Esta función aplica una escala de color continua a la columna indicada
+    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado
+    #' entre los colores definidos en `colores_base`.
+    #'
+    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el
+    #' valor máximo con ese color (utilizando `self$color_maximo`).
+    #'
+
+    degradado_continuo = function(colores_base, col_max = "", freq = 'media') {
+      escala_color <- scales::col_numeric(
+        palette = colores_base,
+        domain = range(self$tbl[[freq]], na.rm = TRUE)
+      )
+
+      #  Asignar color continuo a cada valor de 'media'
+      self$tbl <- self$tbl |>
+        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
+
+      # Color max
+      if (col_max != "") {
+        self$color_maximo(col_max, freq = freq)
+      }
+
+      invisible(self)
+    },
+
+
+    ################################### Graficar barras horizontales ##################################    
     #'
     #' @param x Variable en el eje X.
     #' @return Objeto `ggplot`.
@@ -504,7 +603,9 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
-    #' Graficar barras verticales
+    
+    ################################### Graficar barras verticales ###################################
+    
     #'
     #' @param y Variable en el eje y.
     #' @return Objeto `ggplot`.
@@ -531,7 +632,9 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
-    #' Graficar dona o gauge
+    
+
+    ################################### Graficar dona o gauge ###################################
     #'
     #' @param x Variable en el eje x.
     #' @return Objeto `ggplot`.
@@ -560,7 +663,9 @@ Graficar <- R6::R6Class(
         )
       return(self$grafica)
     },
-    #' Graficar piramide
+    
+    ################################### Graficar piramide ###################################
+  
     #' Necesario hacer cruce de rango edad por sexo
     #' @param x Variable en el eje x.
     #' @return Objeto `ggplot`.
@@ -699,7 +804,8 @@ Graficar <- R6::R6Class(
       return(g_piramide)
     },
 
-    #' Graficar lollipops sin multirespuesta
+    
+    ################################### Graficar lollipops sin multirespuesta ###################################
     #'
     #' @param x Variable en el eje y.
     #' @return Objeto `ggplot`.
@@ -872,6 +978,34 @@ Graficar <- R6::R6Class(
 
     ################################### Graficar barras apiladas ###################################
     
+    #' Graficar barras apiladas 
+    #'
+    #' Genera un gráfico de barras apiladas, donde cada barra representa una categoría en el eje X y se descompone en
+    #' segmentos definidos por la variable `fill`. Las etiquetas de porcentaje
+    #' se muestran centradas dentro de cada segmento cuando su valor es al menos "5%"".
+    #' 
+    #' Los colores de los segmentos se obtienen a partir de la columna `color` en
+    #' `self$tbl`, construyendo un vector nombrado que se pasa a `scale_fill_manual()`.
+    #' De manera opcional se puede agregar un caption siempre y cuando se espcifique @param caption `True`.
+    #' Las etiquetas como la caption pueden envolverse usando un ancho configurable.
+    #'
+    #' @param x Nombre de la columna de `self$tbl` que se usa en el eje X
+    #' @param freq Nombre de la columna numérica que contiene la frecuencia
+    #'   o porcentaje a graficar. Por defecto `"pct"`.
+    #' @param letra_tam Tamaño de las etiquetas de texto.
+    #' @param fill Nombre de la columna categórica que define los segmentos
+    #'   apilados y la leyenda. Por defecto `"respuesta"`.
+    #' @param caption Valor lógico; si es `TRUE`, utiliza `self$tbl$pregunta[1]`
+    #'   como caption, envuelto con `stringr::str_wrap()` a `ancho_cap`. Si es
+    #'   `FALSE`, no se muestra caption.
+    #' @param ancho_cap Ancho (en caracteres) usado para envolver el texto
+    #'   del caption.
+    #' @param ancho_etiquetas Ancho (en caracteres) usado para envolver las
+    #'   etiquetas del eje X.
+    #'
+    #' @return Un objeto `ggplot` con el gráfico de barras apiladas. Además,
+    #'   el gráfico se guarda en `self$grafica`.
+
     
     barras_apiladas = function(x,
                                 freq = "pct", 
@@ -917,16 +1051,16 @@ Graficar <- R6::R6Class(
         scale_fill_manual(
           values = colores_partidos,
           drop   = FALSE,
-          breaks = names(colores_partidos),   # orden de la leyenda
-          labels = names(colores_partidos)    # texto de la leyenda
+          breaks = names(colores_partidos),  
+          labels = names(colores_partidos)    
         ) +
         labs(
           x = NULL, y = NULL,
           caption = envoltura_cap 
         ) +
         ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
-        self$tema +                              # tu tema base
-        theme(                                # y AQUÍ forzamos que sí haya leyenda
+        self$tema +                            
+        theme(                                
           legend.position = "bottom",
           legend.title    = element_blank()
         )
@@ -1066,7 +1200,10 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
-    #' Graficar barras divergentes
+    
+    ###################################  Graficar barras divergentes ###################################
+    
+    
     #'
     #' Genera un gráfico divergente de opinión (positivas vs negativas).
     #'
@@ -1243,7 +1380,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Graficar waffle
+    
+    ################################### Graficar waffle ###################################
+    
     #'
     #' Genera la visualización tipo squircle para mostrar porcentajes
     #'
@@ -1393,62 +1532,12 @@ Encuesta <- R6::R6Class(
       super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
 
-    ################################### Función máximo  ###################################
-
-    #' Resalta el valor máximo de una métrica
-    #'
-    #' Esta función modifica la columna `color` de `self$tbl`, asignando
-    #' un color especial (`col_max`) a la fila que contiene el valor máximo
-    #' de la variable indicada en `freq`.
-
-    color_maximo = function(col_max, freq = "media") {
-      self$tbl <- self$tbl |>
-        mutate(
-          color = dplyr::if_else(
-            !!rlang::sym(freq) == max(!!rlang::sym(freq)),
-            !!col_max,
-            color
-          )
-        )
-
-      invisible(self)
-    },
-
-    ##############
-
-    ################################### función de degradado continuo ###################################
-
-    #' Asigna un degradado de colores continuo a una métrica
-    #'
-    #' Esta función aplica una escala de color continua a la columna indicada
-    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado
-    #' entre los colores definidos en `colores_base`.
-    #'
-    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el
-    #' valor máximo con ese color (utilizando `self$color_maximo`).
-    #'
-
-    degradado_continuo = function(colores_base, col_max = "", freq = 'media') {
-      escala_color <- scales::col_numeric(
-        palette = colores_base,
-        domain = range(self$tbl[[freq]], na.rm = TRUE)
-      )
-
-      #  Asignar color continuo a cada valor de 'media'
-      self$tbl <- self$tbl |>
-        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
-
-      # Color max
-      if (col_max != "") {
-        self$color_maximo(col_max, freq = freq)
-      }
-
-      invisible(self)
-    },
 
     #################
 
-    #' Graficar saldos de opinión y conocimiento
+    
+    ################################### Graficar saldos de opinión y conocimiento ###################################
+    
     #'
     #' @param sufijo_opinion Sufijo de variables de opinión.
     #' @param cat_ns_nc Categorías de no sabe/no contesta.

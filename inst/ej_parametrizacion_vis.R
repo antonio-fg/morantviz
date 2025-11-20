@@ -8,6 +8,8 @@
 # En este script de ejemplo, se muestra una comparación entre las gráficas con sus valores predeterminados (panal izquierdo) y 
 # con la nueva parametrización (panel derecho). 
 
+## LOS VALORES SE EXAGERAN PARA VER LA APLICACIÓN DEL MÉTODO ##
+
 library(stringr)
 library(tidyr)
 library(ggalluvial)
@@ -233,28 +235,16 @@ g$
   pegar_color()$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
   reordenar_columna(columna = "nombre", tipo = "asc")$
-  graficar_barras_h(x = "nombre",letra_tam = 5, hjust =  -.1) + labs(title = "Valores predeteminados") 
-+
-  g$
-  contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
-  filtrar_respuesta(valor = "Sí")$
-  pegar_diccionario()$
-  pegar_color()$
-  envolver_etiquetas(columna = "nombre", ancho = 13)$
-  reordenar_columna(columna = "nombre", tipo = "asc")$
-  graficar_barras_h(x = "nombre", letra_tam = 10, hjust =  -.9) + labs(title = "Nueva parametrización")
+  graficar_barras_h(x = "nombre",letra_tam = 5, hjust =  -.1) + labs(title = "Valores predeteminados") +
+g$
+contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
+filtrar_respuesta(valor = "Sí")$
+pegar_diccionario()$
+pegar_color()$
+envolver_etiquetas(columna = "nombre", ancho = 13)$
+reordenar_columna(columna = "nombre", tipo = "asc")$
+graficar_barras_h(x = "nombre", letra_tam = 10, hjust =  -.4) + labs(title = "Nueva parametrización")
 
 
-################################### Saldos opinión (parmatrización) ###################################
 
-g$saldos_opinion(sufijo_opinion = "opinion_pm",
-                 cat_ns_nc = "Ns/Nc",
-                 sufijo_conoce = "conoce_pm",
-                 cat_conoce = "Sí",
-                 actores = c("astiazaran", "delrio"),
-                 positivas = c("Muy buena", "Buena"),
-                 negativas = c("Mala", "Muy mala"),
-                 regular = "",
-                 letra_tam = 90, 
-                 hjust =  -.9) 
 

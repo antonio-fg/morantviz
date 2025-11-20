@@ -124,3 +124,36 @@ g$
   barras_apiladas(x = "nombre")
 
 
+################################### Graficas apiladas con saldo ###################################
+
+barras_apiladas <-  g$
+                      contar_variables(variables = 
+                        c("cruz_rel",
+                        "andrea_rel",
+                        "juan_rel",
+                        "chavez_rel"))$
+                      pegar_diccionario()$
+                      pegar_color()$
+                      calcular_pct()$
+                      barras_apiladas(x = "nombre")
+
+
+ns_nc <- g$
+          filtrar_respuesta(valor = "Ns/Nc")$
+          graficar_barras_h(x = "nombre", y = "pct") +          
+          theme_void() +
+          labs(caption = NULL, title = "No sabe / No contesta") +
+          theme(text = element_text(family = "Poppins"))
+
+
+barras_apiladas + ns_nc +plot_layout(widths = c(3, 1))
+
+##widths = c(3, 1) significa:
+#la gráfica de la izquierda ocupa 3 partes
+#la de la derecha 1 parte
+#total 4 partes; izquierda ≈ 75%, derecha ≈ 25%, el cambio tambien es continuo, entonces se puede usar 2.8 o valores similares
+
+
+
+
+

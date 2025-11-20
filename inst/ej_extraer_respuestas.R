@@ -2,8 +2,8 @@
 # Extaer respuestas
 ######################################################################
 
-# Toma la llave de pregunta de la columna codigo y:
-# Obtener del diccionario todas las respuestas posibles en el orden correcto.
+# Toma la llave de pregunta de la columna codigo:
+# Obtiene del diccionario todas las respuestas posibles en el orden correcto.
 # Asegura que self$tbl tenga una fila por cada respuesta posible, aunque en los datos originales no haya respuestas (poniendo n = 0).
 # Rellena datos de contexto (pregunta, nombre, etc.) en las filas nuevas.
 # Garantizar que las columnas n y pct no tengan NA, sino 0.
@@ -12,6 +12,8 @@
 
 
 ################################### Ejemplos con barras (horizontales y verticales)###################################
+
+devtools::load_all(path = "../morantviz/")
 
 ### Colores 
 colores <- tibble::tribble( ~respuesta, ~color,# Partidos
@@ -64,6 +66,9 @@ g$
   pegar_color()$
   calcular_pct()$
   graficar_barras_v(x = "respuesta", y = "pct")
+
+
+
 
 
 
