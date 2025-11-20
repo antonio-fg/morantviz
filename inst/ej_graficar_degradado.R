@@ -1,4 +1,4 @@
-usethis::use_readme_rmd( open = FALSE )
+
 library(encuestar) #si se necesita para el diseño muestral
 library(survey)
 #library(morantviz)

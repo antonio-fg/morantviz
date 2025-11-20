@@ -5,9 +5,17 @@
 
 # La actualización de la parametrización de las visualizaciones permite modificar el tamaño y posiciones
 # de las letras detro de todas las gráficas de MorantViz con excepción de la grafica de Waffle. 
+<<<<<<< HEAD
 # En este script de ejemplo, se muestra una comparación entre las gráficas con sus valores predeterminados (panel izquierdo) y 
 # con la nueva parametrización (panel derecho). 
 
+=======
+# En este script de ejemplo, se muestra una comparación entre las gráficas con sus valores predeterminados (panal izquierdo) y 
+# con la nueva parametrización (panel derecho). 
+
+## LOS VALORES SE EXAGERAN PARA VER LA APLICACIÓN DEL MÉTODO ##
+
+>>>>>>> dev
 library(stringr)
 library(tidyr)
 library(ggalluvial)
@@ -234,6 +242,7 @@ g$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
   reordenar_columna(columna = "nombre", tipo = "asc")$
   graficar_barras_h(x = "nombre",letra_tam = 5, hjust =  -.1) + labs(title = "Valores predeteminados") +
+<<<<<<< HEAD
   g$
   contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
   filtrar_respuesta(valor = "Sí")$
@@ -256,4 +265,17 @@ g$saldos_opinion(sufijo_opinion = "opinion_pm",
                  regular = "",
                  letra_tam = 90, 
                  hjust =  -.9) 
+=======
+g$
+contar_variables(variables = c("conoce_pm_astiazaran", "conoce_pm_delrio", "conoce_pm_lia", "conoce_pm_javier"), confint = F)$
+filtrar_respuesta(valor = "Sí")$
+pegar_diccionario()$
+pegar_color()$
+envolver_etiquetas(columna = "nombre", ancho = 13)$
+reordenar_columna(columna = "nombre", tipo = "asc")$
+graficar_barras_h(x = "nombre", letra_tam = 10, hjust =  -.4) + labs(title = "Nueva parametrización")
+
+
+
+>>>>>>> dev
 

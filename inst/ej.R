@@ -23,6 +23,7 @@
 library(stringr)
 library(tidyr)
 library(ggalluvial)
+library(treemapify)
 
 
 devtools::load_all(path = "../morantviz/")
@@ -59,7 +60,7 @@ colores <- tibble::tribble(~respuesta, ~color,
 
 
 
-rm(g)
+
 g <- Encuesta$new(diseno = diseno_demo,
                 diccionario = dicc,
                 colores = colores,
@@ -73,10 +74,9 @@ g$
   pegar_diccionario()$
   pegar_color()$
   envolver_etiquetas(columna = "nombre", ancho = 13)$
-  reordenar_columna(columna = "nombre", tipo = "manual", "Astiazarán", after = 1)$
   reordenar_columna(columna = "nombre", tipo = "asc")
 
-g$tbl$nombre
+
 
 g$graficar_barras_h(x = "nombre")
 
@@ -187,7 +187,7 @@ g$
   partir_regular(opcion = "Regular")$
   cambiarSigno_freq(negativo = c("Mala", "Muy mala"))$
   reordenar_columna(columna = "nombre", tipo = "suma")$
-  etiquetar_regular(regular = "")
+  etiquetar_regular(regular = "",freq = "media")
 
 g$tbl
 op <- g$graficar_barras_divergente(regular = NULL,
@@ -279,7 +279,7 @@ g$
   partir_regular(opcion = regular)$
   cambiarSigno_freq(negativo = negativas)$
   reordenar_columna(columna = "nombre", tipo = "suma")$
-  etiquetar_regular(regular = regular)
+  etiquetar_regular(regular = regular, freq = "media")
 
 g$graficar_barras_divergente(regular = regular,
                              positivas = rev(positivas),

@@ -55,6 +55,7 @@ Graficar <- R6::R6Class(
     color_principal = NULL,
     #' @field tema Tema de `ggplot` a aplicar en las gráficas.
     tema = NULL,
+    niveles_ordenados = NULL,
 
     #' Inicializar objeto Graficar
     #'
@@ -73,7 +74,8 @@ Graficar <- R6::R6Class(
       diccionario,
       colores,
       color_principal,
-      tema
+      tema,
+      niveles_ordenados
     ) {
       if (!is.null(diseno)) {
         self$diseno <- diseno
@@ -89,7 +91,9 @@ Graficar <- R6::R6Class(
       self$color_principal <- color_principal
     },
 
-    #' Contar variables ponderadas
+    
+    ################################### Contar variables ponderadas ###################################
+  
     #'
     #' Llama a `contar_vars_pesos` para obtener proporciones y medias.
     #'
@@ -119,7 +123,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Contar variables ponderadas por grupos
+    
+    ################################### Contar variables ponderadas por grupos ###################################
+    
     #'
     #' Llama a `contar_vars_porGrupos_pesos` para obtener proporciones y medias.
     #'
@@ -148,7 +154,10 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
-    #' Contar variable multirespuesta
+    
+    
+    ################################### Contar variable multirespuesta ###################################
+    
     #'
     #' Llama a `contar_variable_multirespuesta` para obtener proporciones de una variable multirespuesta con algún separador.
     #'
@@ -186,7 +195,9 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
-    #' Filtrar respuestas específicas
+    
+    ################################### Filtrar respuestas específicas ###################################
+    
     #'
     #' @param variable Nombre de la variable a filtrar.
     #' @param valor Valores a conservar.
@@ -199,7 +210,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Reordenar una columna
+    
+    ################################### Reordenar una columna ###################################
+    
     #'
     #' Permite reordenar factores de forma manual, ascendente, descendente o por suma.
     #'
@@ -254,7 +267,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Envolver etiquetas de texto
+    
+    ################################### Envolver etiquetas de texto ###################################
+    
     #'
     #' @param columna Columna de etiquetas.
     #' @param ancho Número máximo de caracteres por línea.
@@ -271,7 +286,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Pegar diccionario de variables
+    
+    ################################### Pegar diccionario de variables ###################################
+    
     #'
     #' Hace un `left_join` entre la tabla de resultados y el diccionario.
     #' @examples
@@ -282,7 +299,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Partir la categoría "Regular" en dos mitades
+    
+    ################################### Partir la categoría "Regular" en dos mitades ###################################
+    
     #'
     #' Divide la proporción de "Regular" en dos (positivo/negativo).
     #'
@@ -315,7 +334,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Cambiar signo a medias de categorías negativas
+    
+    ################################### Cambiar signo a medias de categorías negativas ###################################
+  
     #'
     #' @param negativo Vector de respuestas negativas.
     #' @examples
@@ -332,7 +353,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Etiquetar categoría Regular y porcentajes
+    
+    ################################### Etiquetar categoría Regular y porcentajes ###################################
+    
     #'
     #' @param regular Valor de la categoría Regular.
     #' @examples
@@ -350,7 +373,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Pegar colores
+    #
+    ################################### Pegar colores ###################################
+    
     #'
     #' Asigna colores a cada respuesta. Usa `color_principal` si falta.
     #' Volví a utilizar la función inicial de pegar_color()
@@ -380,8 +405,39 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Agregar saldo por grupo
+
+    ################################### Pegar color por grupo ###################################
+    
+    #' La función asigna a self$tbl, los colores definidos en self$colores.
+    #' Por defecto usa la columna "codigo" (las llaves) de self$tbl, ya que cada "llave" puede representar un grupo diferente, 
+    #' pero permite usar cualquier otra columna, por ejemplo "nombre" 
+    #' Si algún grupo no tiene color asignado, se le asigna automáticamente self$color_principal.
+    #' Este método es comunmente usado en "graficar lineas" (ver el ejemplo ej_graficar_lineas.R)
     #'
+    #' @param col. Nombre de la columna de self$tbl que determina los grupos.
+    #' @examples
+    #' g$pegar_colorPorGrupo(col = "nombre")
+    #'
+    
+    pegar_colorPorGrupo = function (col = "codigo") {
+      color_grupo <- self$colores |> 
+        rename(!!sym(col) := respuesta)
+
+      self$tbl <- self$tbl |> 
+        left_join(color_grupo, by = col) |> 
+        mutate(
+        color = if_else(
+              is.na(.data$color),
+              self$color_principal,
+              .data$color
+            )
+          )
+      invisible(self)
+    },
+
+
+    ################################### Agregar saldo por grupo ###################################
+
     #' @param por Variable de agrupación.
     #' @examples
     #' g$agregar_saldo("nombre")
@@ -391,13 +447,140 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Graficar barras horizontales
+    ################################### Método de extraer respuestas ###################################
+
+    #' Asegura que todas las respuestas definidas en el diccionario aparezcan en self$tbl,
+    #' completa niveles faltantes "codigo", "nombre", "pregunta", "respuestas",
+    #' esto con el fin de poder graficar las captions, las etiquetas correctamente.
+    #' Extrae los niveles ordenados del diccionario para un código y los usa para 
+    #' completar filas faltantes en `self$tbl` mediante `tidyr::complete()`. 
+    #' Rellena columnas de contexto y normaliza columnas numéricas (`n`, `pct`).
+    #'
+    #' @param codigo Llave usada para recuperar los niveles del diccionario.
+    
+    extraer_respuestas = function(codigo) {
+
+      # Extraer niveles ordenados desde el diccionario
+      niveles_ordenados <- self$diccionario |>
+        dplyr::filter(.data$codigo %in% .env$codigo) |>
+        dplyr::pull(respuestas) |>
+        stringr::str_split("_") |>
+        purrr::pluck(1)
+
+      self$niveles_ordenados <- niveles_ordenados
+
+      # Identifica las principales columnas de contexto disponibles en self$tbl, ya que puede que no existan todas
+      columnas_contexto <- intersect(
+        c("codigo", "nombre", "pregunta", "respuestas"),
+        colnames(self$tbl)
+      )
+    
+      df <- self$tbl # por simplicidad 
+    
+      # Completa las categorías faltantes según niveles_ordenados.
+      # Si existe "codigo", completa por cada llave; de lo contrario, completa globalmente.
+
+      if ("codigo" %in% names(df)) {
+        df <- df |>
+          dplyr::group_by(codigo) |>
+          tidyr::complete(
+            respuesta = niveles_ordenados,
+            fill = list(n = 0)
+          ) |>
+          dplyr::ungroup()
+      } 
+
+ 
+      # Rellena los NA en las columnas de contexto: "codigo", "nombre", "pregunta", "respuestas",
+      # hacia abajo y arriba, garantizando que la columnas estén bien definidas para graficar las captions y etiquetas
+
+      if (length(columnas_contexto) > 0) {
+        df <- df |>
+          tidyr::fill(dplyr::all_of(columnas_contexto), .direction = "downup")
+      }
+    
+      # Asegura que n y pct en 0 donde haya NA
+      df <- df |>
+        dplyr::mutate(
+          dplyr::across(
+            dplyr::any_of(c("n", "pct")),
+            ~ tidyr::replace_na(.x, 0)
+          )
+        )
+      
+      self$tbl <- df
+      invisible(self)
+    },
+
+    ################################### Función máximo  ###################################
+
+    #' Resalta el valor máximo de una métrica
+    #'
+    #' Esta función modifica la columna `color` de `self$tbl`, asignando
+    #' un color especial (`col_max`) a la fila que contiene el valor máximo
+    #' de la variable indicada en `freq`.
+
+    color_maximo = function(col_max, freq = "media") {
+      self$tbl <- self$tbl |>
+        mutate(
+          color = dplyr::if_else(
+            !!rlang::sym(freq) == max(!!rlang::sym(freq)),
+            !!col_max,
+            color
+          )
+        )
+
+      invisible(self)
+    },
+
+    ##############
+
+    ################################### función de degradado continuo ###################################
+
+    #' Asigna un degradado de colores continuo a una métrica
+    #'
+    #' Esta función aplica una escala de color continua a la columna indicada
+    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado
+    #' entre los colores definidos en `colores_base`.
+    #'
+    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el
+    #' valor máximo con ese color (utilizando `self$color_maximo`).
+    #'
+
+    degradado_continuo = function(colores_base, col_max = "", freq = 'media') {
+      escala_color <- scales::col_numeric(
+        palette = colores_base,
+        domain = range(self$tbl[[freq]], na.rm = TRUE)
+      )
+
+      #  Asignar color continuo a cada valor de 'media'
+      self$tbl <- self$tbl |>
+        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
+
+      # Color max
+      if (col_max != "") {
+        self$color_maximo(col_max, freq = freq)
+      }
+
+      invisible(self)
+    },
+
+
+    ################################### Graficar barras horizontales ##################################    
     #'
     #' @param x Variable en el eje X.
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_h("nombre")
-    graficar_barras_h = function(x, y = "media",letra_tam = 5, hjust =  -.1 ) {
+    graficar_barras_h = function(x, 
+                                  y = "media",
+                                  letra_tam = 5, 
+                                  hjust =  -.1,
+                                  ancho_cap = 80,
+                                  ancho_etiquetas = 25) {
+      
+      envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      
       self$grafica <- ggplot2::ggplot(
         self$tbl,
         ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))
@@ -410,17 +593,20 @@ Graficar <- R6::R6Class(
           family = self$tema$text$family
         ) +
         ggplot2::coord_flip() +
-        ggplot2::labs(caption = self$tbl$pregunta[1]) +
+        ggplot2::labs(caption = envoltura_cap) +
         ggplot2::scale_y_continuous(
           labels = scales::percent_format(accuracy = 1),
           limits = c(0, 1)
         ) +
         ggplot2::scale_fill_identity() +
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
         self$tema
       return(self$grafica)
     },
 
-    #' Graficar barras verticales
+    
+    ################################### Graficar barras verticales ###################################
+    
     #'
     #' @param y Variable en el eje y.
     #' @return Objeto `ggplot`.
@@ -447,20 +633,22 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
-    #' Graficar dona o gauge
+    
+
+    ################################### Graficar dona o gauge ###################################
     #'
     #' @param x Variable en el eje x.
     #' @return Objeto `ggplot`.
     #' @
     #' g$graficar_gauge("nombre")
 
-    graficar_gauge = function(letra_tam = 12) {
+    graficar_gauge = function(letra_tam = 12,freq = "media") {
       valor <- self$tbl |>
         dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
-        dplyr::pull(media)
+        dplyr::pull(freq)
 
       self$grafica <- self$tbl |>
-        ggplot2::ggplot(ggplot2::aes(x = "", y = media, fill = color)) +
+        ggplot2::ggplot(ggplot2::aes(x = "", y = !!sym(freq), fill = color)) +
         ggplot2::geom_col(width = 0.4) +
         ggplot2::coord_polar(theta = "y", start = 0) +
         ggplot2::scale_fill_identity() +
@@ -470,13 +658,15 @@ Graficar <- R6::R6Class(
           x = 0,
           y = 0,
           label = base::paste0(scales::percent(valor, accuracy = 1)),
-          size = letra_tam ,
+          size = letra_tam,
           fontface = "bold",
           color = "black"
         )
       return(self$grafica)
     },
-    #' Graficar piramide
+    
+    ################################### Graficar piramide ###################################
+  
     #' Necesario hacer cruce de rango edad por sexo
     #' @param x Variable en el eje x.
     #' @return Objeto `ggplot`.
@@ -615,13 +805,25 @@ Graficar <- R6::R6Class(
       return(g_piramide)
     },
 
-    #' Graficar lollipops sin multirespuesta
+    
+    ################################### Graficar lollipops sin multirespuesta ###################################
     #'
     #' @param x Variable en el eje y.
     #' @return Objeto `ggplot`.
     #' @
     #' g$graficar_lollipops("respuesta") 
-    graficar_lollipops = function(x, y = "media", letra_tam = 6, hjust = -0.5, bola_tam = 5) {
+    graficar_lollipops = function(x, 
+                  y = "media", 
+                  letra_tam = 6, 
+                  hjust = -0.5, 
+                  bola_tam = 5,
+                  ancho_cap = 80,
+                  ancho_etiquetas = 25
+                  ) 
+                  {
+      
+      envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      
       self$grafica <- self$tbl |>
         ggplot2::ggplot(ggplot2::aes(
           x = stats::reorder(!!rlang::sym(x), !!rlang::sym(y)),
@@ -648,8 +850,9 @@ Graficar <- R6::R6Class(
           labels = scales::percent_format()
         ) +
         ggplot2::scale_color_identity(guide = "none") +
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
         #ggplot2::labs(title = " ") +
-        ggplot2::labs(caption = g$tbl$pregunta[1]) +
+        ggplot2::labs(caption = envoltura_cap) +
         self$tema  
         #ggplot2::theme(
         #  plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
@@ -693,51 +896,179 @@ Graficar <- R6::R6Class(
     #'
 
     graficar_lineas = function(
-      x,
+      x = "respuesta",
       freq = "media",
-      color = "color",
-      letra_tam = 5,
-      hjust =  -.1,
-      vjust = -1,
-      bola_tam = 3,
-      group = "codigo"
-    ) {
-      
-
-      aes_args <- aes(
-        x = !!sym(x),
-        y = !!sym(freq),
-        group = !!sym(group),
-        color = color 
+      grupo = 'codigo',
+      grupos_seleccion = NULL,
+      vjust = -0.8,
+      letra_tam = 4,
+      rango_offset = 0.0,
+      ancho_cap = 80,
+      ancho_etiquetas = 25
       )
+      {
+      
+      envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      
+      tbl_filtrada <- self$tbl
 
-      self$grafica <- self$tbl |>
-        ggplot(aes_args) +
+      if (!is.null(grupos_seleccion)){
+        tbl_filtrada <- tbl_filtrada |> filter(!!sym(grupo) %in% grupos_seleccion)
+      }
+
+
+      tbl_filtrada <- tbl_filtrada |>
+        dplyr::group_by(!!rlang::sym(x)) |>
+        # ordena por valor dentro de cada categoría del eje X
+        dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
+        # asigna offsets simétricos alrededor de 0
+        dplyr::mutate(
+          offset_label = if (dplyr::n() == 1) {
+            0
+          } else {
+            seq(from = -rango_offset,
+                to   =  rango_offset,
+                length.out = dplyr::n())
+          },
+          y_label = !!rlang::sym(freq) + offset_label
+        ) |>
+        dplyr::ungroup()
+
+      paleta <- tbl_filtrada |>
+        distinct(!!sym(grupo), color)
+    
+      self$grafica <- tbl_filtrada |> 
+        ggplot( 
+        aes(x = !!sym(x), 
+            y = !!sym(freq), 
+            group = !!sym(grupo), 
+            color = color)) +
         geom_line(linewidth = 1) +
-        geom_point(size = bola_tam) +
+        geom_point(size = 3) +
+        geom_text(aes(y = y_label,
+                  label = scales::percent(!!sym(freq), accuracy = 1)),
+                  vjust = vjust, 
+                  size = letra_tam, 
+                  color = "black", 
+                  show.legend = FALSE,
+                  max.overlaps = Inf) +
+        scale_color_identity(
+          breaks = paleta$color,              
+          labels = paleta[[grupo]],           
+          guide  = "legend" 
+        ) +
+        scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                           limits = c(0, 1))  +
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) + 
+        self$tema +
+        ggplot2::theme(
+        legend.position  = "bottom",
+        legend.direction = "horizontal",
+        legend.title     = ggplot2::element_blank()
+          ) +
+        ggplot2::guides(
+        color = ggplot2::guide_legend(
+        nrow  = 1,
+        byrow = TRUE)) +
+          labs(
+            caption = envoltura_cap
+          ) 
+        return(self$grafica)
+    },
+
+
+    ################################### Graficar barras apiladas ###################################
+    
+    #' Graficar barras apiladas 
+    #'
+    #' Genera un gráfico de barras apiladas, donde cada barra representa una categoría en el eje X y se descompone en
+    #' segmentos definidos por la variable `fill`. Las etiquetas de porcentaje
+    #' se muestran centradas dentro de cada segmento cuando su valor es al menos "5%"".
+    #' 
+    #' Los colores de los segmentos se obtienen a partir de la columna `color` en
+    #' `self$tbl`, construyendo un vector nombrado que se pasa a `scale_fill_manual()`.
+    #' De manera opcional se puede agregar un caption siempre y cuando se espcifique @param caption `True`.
+    #' Las etiquetas como la caption pueden envolverse usando un ancho configurable.
+    #'
+    #' @param x Nombre de la columna de `self$tbl` que se usa en el eje X
+    #' @param freq Nombre de la columna numérica que contiene la frecuencia
+    #'   o porcentaje a graficar. Por defecto `"pct"`.
+    #' @param letra_tam Tamaño de las etiquetas de texto.
+    #' @param fill Nombre de la columna categórica que define los segmentos
+    #'   apilados y la leyenda. Por defecto `"respuesta"`.
+    #' @param caption Valor lógico; si es `TRUE`, utiliza `self$tbl$pregunta[1]`
+    #'   como caption, envuelto con `stringr::str_wrap()` a `ancho_cap`. Si es
+    #'   `FALSE`, no se muestra caption.
+    #' @param ancho_cap Ancho (en caracteres) usado para envolver el texto
+    #'   del caption.
+    #' @param ancho_etiquetas Ancho (en caracteres) usado para envolver las
+    #'   etiquetas del eje X.
+    #'
+    #' @return Un objeto `ggplot` con el gráfico de barras apiladas. Además,
+    #'   el gráfico se guarda en `self$grafica`.
+
+    
+    barras_apiladas = function(x,
+                                freq = "pct", 
+                                letra_tam = 3.5, 
+                                fill = "respuesta",
+                                caption = F,
+                                ancho_cap = 80,
+                                ancho_etiquetas = 25
+                                ) 
+                                {
+
+
+      if (isTRUE(caption)){
+          envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+        } else {
+          envoltura_cap <- NULL
+      }
+      # Vector nombrado: nombres = niveles de 'fill', valores = color hex
+      colores_partidos <- self$tbl |>
+        distinct(!!sym(fill), color) |>       
+        arrange(!!sym(fill)) |>
+        deframe()                            
+
+      self$grafica <- ggplot(
+        self$tbl,
+        aes(x = !!sym(x),
+            y = !!sym(freq),
+            fill = !!sym(fill))
+      ) +
+        geom_col(width = 0.7, color = NA) +
+        coord_flip() +
         geom_text(
-          aes(label = scales::percent(media, accuracy = 1)),
-          size = letra_tam,
-          hjust = hjust,
-          family = self$tema$text$family,
-          vjust = vjust,
-          color = "black"
+          aes(label = ifelse(!!sym(freq) >= 0.05,
+                             percent(!!sym(freq), accuracy = 1), "")),
+          position = position_stack(vjust = 0.5),
+          color = "white",
+          size  = letra_tam
         ) +
         scale_y_continuous(
-          labels = scales::percent_format(accuracy = 1),
-          limits = c(0, 1)
+          labels = percent_format(accuracy = 1),
+          expand = c(0, 0)
+        ) +
+        scale_fill_manual(
+          values = colores_partidos,
+          drop   = FALSE,
+          breaks = names(colores_partidos),  
+          labels = names(colores_partidos)    
         ) +
         labs(
-          caption = ifelse(
-            is.na(self$tbl$pregunta[1]),
-            "Sin pregunta definida",
-            self$tbl$pregunta[1]
-          )
+          x = NULL, y = NULL,
+          caption = envoltura_cap 
         ) +
-        self$tema
-
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
+        self$tema +                            
+        theme(                                
+          legend.position = "bottom",
+          legend.title    = element_blank()
+        )
+      
       return(self$grafica)
     },
+
 
     ################################### Grafica Sankey  ###################################
 
@@ -870,7 +1201,10 @@ Graficar <- R6::R6Class(
         self$tema
       return(self$grafica)
     },
-    #' Graficar barras divergentes
+    
+    ###################################  Graficar barras divergentes ###################################
+    
+    
     #'
     #' Genera un gráfico divergente de opinión (positivas vs negativas).
     #'
@@ -888,11 +1222,23 @@ Graficar <- R6::R6Class(
       negativas,
       letra_tam = 25,
       vjust = .5,
-      y = "media"
+      x = "nombre",
+      y = "media",
+      caption = F,
+      ancho_cap = 80,
+      ancho_etiquetas = 25
     ) {
+
+      if (isTRUE(caption)){
+          envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      } else {
+          envoltura_cap <- NULL
+      }
+      
+
       self$grafica <- self$tbl |>
         ggplot2::ggplot(ggplot2::aes(
-          x = nombre,
+          x = !!rlang::sym(x),
           y = !!rlang::sym(y),
           group = factor(
             respuesta2,
@@ -933,12 +1279,13 @@ Graficar <- R6::R6Class(
                 dplyr::pull(respuesta)
             )
         ) +
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
         self$tema +
         ggplot2::theme(legend.position = "bottom") +
         lemon::scale_y_symmetric(labels = function(x) {
           scales::percent(abs(x), accuracy = 1)
         }) +
-        ggplot2::labs(fill = NULL, color = NULL)
+        ggplot2::labs(caption = envoltura_cap,fill = NULL, color = NULL)
       return(self$grafica)
     },
 
@@ -962,7 +1309,7 @@ Graficar <- R6::R6Class(
       #niveles_x: toma los valores únicos de la columna eje_x para mantener el orden de los niveles en el eje X.
       #niveles_y: agrupa por eje_y,  extrae los valores de la columna eje_y
 
-      niveles_x <- levels(df[[eje_x]])
+      niveles_x <- df %>% dplyr::pull(!!rlang::sym(eje_x)) %>% unique() #levels(df[[eje_x]]) 
       niveles_y <- df %>%
         group_by(!!rlang::sym(eje_y)) %>%
         summarise(promedio = mean(!!rlang::sym(valor), na.rm = TRUE)) %>%
@@ -1034,7 +1381,9 @@ Graficar <- R6::R6Class(
       invisible(self)
     },
 
-    #' Graficar waffle
+    
+    ################################### Graficar waffle ###################################
+    
     #'
     #' Genera la visualización tipo squircle para mostrar porcentajes
     #'
@@ -1050,11 +1399,19 @@ Graficar <- R6::R6Class(
       escala_color = c(low = "#9d7ad240", high = "#9d7ad2"),
       eje_x = "grupo",
       eje_y = "base_y",
-
-      caption = NULL
+      caption = F,
+      ancho_cap = 80,
+      ancho_etiquetas_x = 25,
+      ancho_etiquetas_y = 25
     ) {
       stopifnot(!is.null(self$tbl))
 
+      if (isTRUE(caption)){
+        envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      } else {
+        envoltura_cap <- NULL 
+      }
+      
       df <- self$tbl
 
       # --- Gráfico principal ---
@@ -1081,15 +1438,15 @@ Graficar <- R6::R6Class(
         ) +
         ggplot2::scale_x_continuous(
           breaks = seq_along(levels(df[[eje_x]])),
-          labels = levels(df[[eje_x]]),
+          labels = stringr::str_wrap(levels(df[[eje_x]]), width = ancho_etiquetas_x),
           position = "top"
         ) +
         ggplot2::scale_y_continuous(
           breaks = seq_along(levels(df[[eje_y]])),
-          labels = str_wrap(levels(df[[eje_y]]), 45)
+          labels = str_wrap(levels(df[[eje_y]]), width = ancho_etiquetas_y)
         ) +
         ggplot2::labs(
-          caption = caption,
+          caption = envoltura_cap,
           x = nombre_x,
         ) +
         self$tema +
@@ -1108,8 +1465,18 @@ Graficar <- R6::R6Class(
             size = 16,
             hjust = 0.5
           ),
-          plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5)
-        )
+          plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5) 
+        ) + 
+        theme(
+        panel.ontop = FALSE,
+        panel.grid.major.x = element_line(color = "#cccccc", linetype = "dashed", linewidth = 0.3),
+        panel.grid.minor.x = element_blank()
+        ) 
+        #+ 
+        #theme(
+        #panel.grid.major.x = element_blank(),
+        #panel.grid.minor.x = element_blank()
+        #)
 
       return(self$grafica)
     }
@@ -1166,64 +1533,12 @@ Encuesta <- R6::R6Class(
       super$initialize(diseno, bd, diccionario, colores, color_principal, tema)
     },
 
-    ################################### Función máximo  ###################################
-
-    #' Resalta el valor máximo de una métrica
-    #'
-    #' Esta función modifica la columna `color` de `self$tbl`, asignando
-    #' un color especial (`col_max`) a la fila que contiene el valor máximo
-    #' de la variable indicada en `freq`.
-
-    color_maximo = function(col_max, freq = "media") {
-      self$tbl <- self$tbl |>
-        mutate(
-          color = dplyr::if_else(
-            !!rlang::sym(freq) == max(!!rlang::sym(freq)),
-            !!col_max,
-            color
-          )
-        )
-
-      invisible(self)
-    },
-
-    ##############
-
-    ################################### función de degradado continuo ###################################
-
-    #' Asigna un degradado de colores continuo a una métrica
-    #'
-    #' Esta función aplica una escala de color continua a la columna indicada
-    #' en `freq` (por defecto "media"). Cada valor recibe un color interpolado
-    #' entre los colores definidos en `colores_base`.
-    #'
-    #' Opcionalmente, si se pasa un color en `col_max`, también se resalta el
-    #' valor máximo con ese color (utilizando `self$color_maximo`).
-    #'
-
-    degradado_continuo = function(colores_base, col_max = "", freq = 'media') {
-      escala_color <- scales::col_numeric(
-        palette = colores_base,
-        domain = range(self$tbl[[freq]], na.rm = TRUE)
-      )
-
-      #  Asignar color continuo a cada valor de 'media'
-      self$tbl <- self$tbl |>
-        dplyr::mutate(color = escala_color(!!rlang::sym(freq)))
-
-      # Color max
-      if (col_max != "") {
-        self$color_maximo(col_max, freq = freq)
-      }
-
-      invisible(self)
-    },
 
     #################
 
     
-
-    #' Graficar saldos de opinión y conocimiento
+    ################################### Graficar saldos de opinión y conocimiento ###################################
+    
     #'
     #' @param sufijo_opinion Sufijo de variables de opinión.
     #' @param cat_ns_nc Categorías de no sabe/no contesta.
@@ -1243,12 +1558,17 @@ Encuesta <- R6::R6Class(
       positivas,
       negativas,
       regular,
-      letra_tam = 5, 
+      letra_tam = 5,
+      letra_tam_con = 20, 
       hjust =  -.1,
       vjust = .5,
+      ancho_etiquetas = 25,
+      ancho_ns_nc = 25,
       y = "media"
     ) 
     {
+
+      
       # --- Opinión ---
       opinion <- paste(sufijo_opinion, actores, sep = "_")
       super$contar_variables(
@@ -1256,22 +1576,27 @@ Encuesta <- R6::R6Class(
         confint = FALSE
       )$filtrar_respuesta(
         valor = c(positivas, negativas, regular)
-      )$pegar_diccionario()$pegar_color()$reordenar_columna(
+      )$pegar_diccionario()$
+        pegar_color()$
+        reordenar_columna(
         columna = "respuesta",
         tipo = "manual",
         c(positivas, regular, negativas)
-      )$partir_regular(opcion = regular)$cambiarSigno_freq(
+      )$
+        partir_regular(opcion = regular)$
+        cambiarSigno_freq(
         negativo = negativas
-      )$reordenar_columna(columna = "nombre", tipo = "suma")$etiquetar_regular(
-        regular = regular
+      )$reordenar_columna(columna = "nombre", tipo = "suma")$
+        etiquetar_regular(
+        regular = regular,
+        freq = y
       )
 
       op <- super$graficar_barras_divergente(
         regular = regular,
         positivas = rev(positivas),
         negativas = negativas,
-        letra_tam = letra_tam,
-        vjust = vjust
+        ancho_etiquetas = ancho_etiquetas
       )
 
       orden <- self$tbl$nombre |> levels()
@@ -1283,7 +1608,9 @@ Encuesta <- R6::R6Class(
         confint = FALSE
       )$filtrar_respuesta(
         valor = cat_conoce
-      )$pegar_diccionario()$pegar_color()$reordenar_columna(
+      )$pegar_diccionario()$
+        pegar_color()$
+        reordenar_columna(
         columna = "nombre",
         tipo = "manual",
         orden
@@ -1292,14 +1619,16 @@ Encuesta <- R6::R6Class(
       conoc <- self$tbl |>
         ggplot2::ggplot(ggplot2::aes(x = nombre, y = 1)) +
         ggplot2::geom_tile(
-          ggplot2::aes(fill = media),
+          ggplot2::aes(fill = !!rlang::sym(y)),
           color = "white",
-          show.legend = FALSE
+          show.legend = F
         ) +
         ggfittext::geom_fit_text(
-          ggplot2::aes(label = scales::percent(media, 1)),
+          ggplot2::aes(label = scales::percent(!!rlang::sym(y), 1)),
           contrast = TRUE,
-          size = letra_tam
+            size = letra_tam_con,
+           # deja crecer el texto si hay espacio
+            min.size = 0 
         ) +
         ggplot2::coord_flip() +
         ggplot2::labs(x = NULL, y = NULL, title = "Conocimiento") +
@@ -1316,16 +1645,18 @@ Encuesta <- R6::R6Class(
         confint = FALSE
       )$filtrar_respuesta(
         valor = cat_ns_nc
-      )$pegar_diccionario()$pegar_color()$reordenar_columna(
+      )$pegar_diccionario()$
+        pegar_color()$
+        reordenar_columna(
         columna = "nombre",
         tipo = "manual",
         orden
       )
-
+        titulo_ns_nc <- "No sabe / No contesta"
         ns_nc <- super$graficar_barras_h(x = "nombre", y = y, letra_tam = letra_tam,
         hjust = hjust) +
         ggplot2::theme_void() +
-        ggplot2::labs(caption = NULL, title = "No sabe / No contesta") +
+        ggplot2::labs(caption = NULL, title =  stringr::str_wrap(titulo_ns_nc, width = ancho_ns_nc)) +
         ggplot2::theme(text = ggplot2::element_text(family = "Poppins"))
 
       # Combinar los tres gráficos en un patchwork
