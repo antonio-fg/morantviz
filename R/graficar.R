@@ -612,7 +612,14 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_v("nombre")
-    graficar_barras_v = function(x, y = "media", letra_tam = 5, vjust = -.1) {
+    graficar_barras_v = function(x, y = "media", 
+                                    letra_tam = 5, 
+                                    vjust = -.1,
+                                    ancho_cap = 80,
+                                    ancho_etiquetas = 25) {
+      
+      envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
+      
       self$grafica <- ggplot2::ggplot(
         self$tbl,
         ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))
@@ -624,12 +631,13 @@ Graficar <- R6::R6Class(
           vjust = vjust,
           family = self$tema$text$family
         ) +
-        ggplot2::labs(caption = self$tbl$pregunta[1]) +
+        ggplot2::labs(caption = envoltura_cap) +
         ggplot2::scale_y_continuous(
           labels = scales::percent_format(accuracy = 1),
           limits = c(0, 1)
         ) +
         ggplot2::scale_fill_identity() +
+        ggplot2::scale_x_discrete(labels = ~stringr::str_wrap(.x, width = ancho_etiquetas)) +
         self$tema
       return(self$grafica)
     },
