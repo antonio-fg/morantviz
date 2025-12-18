@@ -196,8 +196,9 @@ g$contar_variables_porGrupos(variables = c("aprob_rosario"),grupos = c("año"))$
                   freq ="pct", 
                   grupo = "respuesta", 
                   letra_tam = 7, 
-                  rango_offset = 0.037) + 
-  
+                  rango_offset = 0.037)
+
++ 
 g$contar_variables_porGrupos(variables = c("aprob_rosario"),grupos = c("año"))$
 pegar_diccionario()$
 calcular_pct()$
