@@ -502,7 +502,7 @@ Graficar <- R6::R6Class(
       df <- df |>
         dplyr::mutate(
           dplyr::across(
-            dplyr::any_of(c("n", "pct")),
+            dplyr::any_of(c("n", "pct","media")),
             ~ tidyr::replace_na(.x, 0)
           )
         )
@@ -611,7 +611,11 @@ Graficar <- R6::R6Class(
     #' @return Objeto `ggplot`.
     #' @examples
     #' g$graficar_barras_v("nombre")
-    graficar_barras_v = function(x, y = "media", letra_tam = 5, vjust = -.1) {
+    graficar_barras_v = function(x, y = "media", 
+      letra_tam = 5,
+      ancho_cap = 80,
+      ancho_etiquetas = 25, 
+      vjust = -.1) {
       self$grafica <- ggplot2::ggplot(
         self$tbl,
         ggplot2::aes(x = !!rlang::sym(x), y = !!rlang::sym(y))
@@ -641,9 +645,10 @@ Graficar <- R6::R6Class(
     #' @
     #' g$graficar_gauge("nombre")
 
-    graficar_gauge = function(letra_tam = 12,freq = "media") {
+    graficar_gauge = function(letra_tam = 12,freq = "media",filtro = "Sí") {
       valor <- self$tbl |>
-        dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
+        #dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
+        dplyr::filter(.data$respuesta == .env$filtro)|>
         dplyr::pull(freq)
 
       self$grafica <- self$tbl |>
@@ -907,6 +912,7 @@ Graficar <- R6::R6Class(
       )
       {
       
+      #Envoltura de la caption
       envoltura_cap <- stringr::str_wrap(self$tbl$pregunta[1], width = ancho_cap)
       
       tbl_filtrada <- self$tbl
@@ -916,25 +922,28 @@ Graficar <- R6::R6Class(
       }
 
 
-      tbl_filtrada <- tbl_filtrada |>
-        dplyr::group_by(!!rlang::sym(x)) |>
-        # ordena por valor dentro de cada categoría del eje X
-        dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
-        # asigna offsets simétricos alrededor de 0
-        dplyr::mutate(
-          offset_label = if (dplyr::n() == 1) {
-            0
-          } else {
-            seq(from = -rango_offset,
-                to   =  rango_offset,
-                length.out = dplyr::n())
-          },
-          y_label = !!rlang::sym(freq) + offset_label
-        ) |>
-        dplyr::ungroup()
+      #tbl_filtrada <- tbl_filtrada |>
+      #  dplyr::group_by(!!rlang::sym(x)) |>
+      #  # ordena por valor dentro de cada categoría del eje X
+      #  dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
+      #  # asigna offsets simétricos alrededor de 0
+      #  dplyr::mutate(
+      #    offset_label = if (dplyr::n() == 1) {
+      #      0
+      #    } else {
+      #      seq(from = -rango_offset,
+      #          to   =  rango_offset,
+      #          length.out = dplyr::n())
+      #    },
+      #    y_label = !!rlang::sym(freq) + offset_label
+      #  ) |>
+      #  dplyr::ungroup()
 
       paleta <- tbl_filtrada |>
         distinct(!!sym(grupo), color)
+
+
+
     
       self$grafica <- tbl_filtrada |> 
         ggplot( 
@@ -944,7 +953,7 @@ Graficar <- R6::R6Class(
             color = color)) +
         geom_line(linewidth = 1) +
         geom_point(size = 3) +
-        geom_text(aes(y = y_label,
+        geom_text(aes(y = !!sym(freq),
                   label = scales::percent(!!sym(freq), accuracy = 1)),
                   vjust = vjust, 
                   size = letra_tam, 
