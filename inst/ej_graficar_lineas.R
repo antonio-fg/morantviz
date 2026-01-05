@@ -196,9 +196,7 @@ g$contar_variables_porGrupos(variables = c("aprob_rosario"),grupos = c("año"))$
                   freq ="pct", 
                   grupo = "respuesta", 
                   letra_tam = 7, 
-                  rango_offset = 0.037)
-
-+ 
+                  rango_offset = 0.037) + 
 g$contar_variables_porGrupos(variables = c("aprob_rosario"),grupos = c("año"))$
 pegar_diccionario()$
 calcular_pct()$
@@ -214,4 +212,5 @@ graficar_lineas(x ="año",
 #theme(
 #    axis.title.y  = element_blank(),
 #    axis.text.y   = element_blank(),
+
 #    axis.ticks.y  = element_blank())
