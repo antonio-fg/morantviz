@@ -919,24 +919,25 @@ Graficar <- R6::R6Class(
           filter(!!sym(grupo) %in% grupos_seleccion)
       }
 
-      tbl_filtrada <- tbl_filtrada |>
-        dplyr::group_by(!!rlang::sym(x)) |>
-        # ordena por valor dentro de cada categoría del eje X
-        dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
-        # asigna offsets simétricos alrededor de 0
-        dplyr::mutate(
-          offset_label = if (dplyr::n() == 1) {
-            0
-          } else {
-            seq(
-              from = -rango_offset,
-              to = rango_offset,
-              length.out = dplyr::n()
-            )
-          },
-          y_label = !!rlang::sym(freq) + offset_label
-        ) |>
-        dplyr::ungroup()
+      ## Parte de la superposición de los porcentajes
+      #tbl_filtrada <- tbl_filtrada |>
+      #  dplyr::group_by(!!rlang::sym(x)) |>
+      #  # ordena por valor dentro de cada categoría del eje X
+      #  dplyr::arrange(!!rlang::sym(freq), .by_group = TRUE) |>
+      #  # asigna offsets simétricos alrededor de 0
+      #  dplyr::mutate(
+      #    offset_label = if (dplyr::n() == 1) {
+      #      0
+      #    } else {
+      #      seq(
+      #        from = -rango_offset,
+      #        to = rango_offset,
+      #        length.out = dplyr::n()
+      #      )
+      #    },
+      #    y_label = !!rlang::sym(freq) + offset_label
+      #  ) |>
+      #  dplyr::ungroup()
 
       paleta <- tbl_filtrada |>
         distinct(!!sym(grupo), color)
@@ -953,7 +954,7 @@ Graficar <- R6::R6Class(
         geom_line(linewidth = 1) +
         geom_point(size = 3) +
         geom_text(
-          aes(y = y_label, label = scales::percent(!!sym(freq), accuracy = 1)),
+          aes(y = !!sym(freq), label = scales::percent(!!sym(freq), accuracy = 1)),
           vjust = vjust,
           size = letra_tam,
           color = "black",
