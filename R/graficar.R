@@ -183,6 +183,7 @@ Graficar <- R6::R6Class(
 
       invisible(self)
     },
+    
     calcular_pct = function(var = "n", grupo = "codigo") {
       self$tbl <- self$tbl |>
         mutate(
@@ -201,7 +202,7 @@ Graficar <- R6::R6Class(
     #' @return La tabla interna (`self$tbl`) se filtra.
     #' @examples
     #' g$filtrar_respuesta(variable = "respuesta", valor = "Sí")
-    filtrar_respuesta = function(variable = "respuesta", valor) {
+    filtrar_respuesta = function(variable, valor) {
       self$tbl <- self$tbl |>
         dplyr::filter(!!rlang::sym(variable) %in% !!valor)
       invisible(self)
@@ -490,7 +491,7 @@ Graficar <- R6::R6Class(
       df <- df |>
         dplyr::mutate(
           dplyr::across(
-            dplyr::any_of(c("n", "pct")),
+            dplyr::any_of(c("n", "pct","media")),
             ~ tidyr::replace_na(.x, 0)
           )
         )
@@ -593,6 +594,8 @@ Graficar <- R6::R6Class(
           labels = ~ stringr::str_wrap(.x, width = ancho_etiquetas)
         ) +
         self$tema
+
+      
       return(self$grafica)
     },
 
@@ -640,9 +643,9 @@ Graficar <- R6::R6Class(
     #' @
     #' g$graficar_gauge("nombre")
 
-    graficar_gauge = function(letra_tam = 12, freq = "media") {
+    graficar_gauge = function(letra_tam = 12, freq = "media",filtro = c("filtro")) {
       valor <- self$tbl |>
-        dplyr::filter(respuesta %in% c("Sí", "Sí lo conoce")) |>
+        dplyr::filter(respuesta %in% filtro) |>
         dplyr::pull(freq)
 
       self$grafica <- self$tbl |>
@@ -905,7 +908,8 @@ Graficar <- R6::R6Class(
       letra_tam = 4,
       rango_offset = 0.0,
       ancho_cap = 80,
-      ancho_etiquetas = 25
+      ancho_etiquetas = 25,
+      limite = c(0, 1)
     ) {
       envoltura_cap <- stringr::str_wrap(
         self$tbl$pregunta[1],
@@ -968,7 +972,7 @@ Graficar <- R6::R6Class(
         ) +
         scale_y_continuous(
           labels = scales::percent_format(accuracy = 1),
-          # limits = c(0, 1)
+           limits = limite  #Graficar de 0 a 100%
         ) +
         # ggplot2::scale_x_discrete(
         #   labels = ~ stringr::str_wrap(.x, width = ancho_etiquetas)
@@ -1026,53 +1030,70 @@ Graficar <- R6::R6Class(
       freq = "pct",
       letra_tam = 3.5,
       fill = "respuesta",
-      caption = F,
+      caption = FALSE,
       ancho_cap = 80,
       ancho_etiquetas = 25
     ) {
+      stopifnot(!is.null(self$tbl))
+    
+      # Caption opcional
+      envoltura_cap <- NULL
       if (isTRUE(caption)) {
         envoltura_cap <- stringr::str_wrap(
           self$tbl$pregunta[1],
           width = ancho_cap
         )
-      } else {
-        envoltura_cap <- NULL
       }
-      # Vector nombrado: nombres = niveles de 'fill', valores = color hex
+    
+      # --- Validaciones mínimas ---
+      cols_needed <- c(x, freq, fill)
+      miss <- setdiff(cols_needed, names(self$tbl))
+      if (length(miss) > 0) {
+        stop("Faltan columnas en self$tbl: ", paste(miss, collapse = ", "), call. = FALSE)
+      }
+      if (!("color" %in% names(self$tbl))) {
+        stop("Falta la columna 'color' en self$tbl (necesaria para scale_fill_manual).", call. = FALSE)
+      }
+    
+      # Vector nombrado: names = niveles de fill, values = hex
       colores_partidos <- self$tbl |>
-        distinct(!!sym(fill), color) |>
-        arrange(!!sym(fill)) |>
-        deframe()
-
-      self$grafica <- ggplot(
+        dplyr::distinct(!!rlang::sym(fill), color) |>
+        dplyr::arrange(!!rlang::sym(fill)) |>
+        tibble::deframe()
+    
+      self$grafica <- ggplot2::ggplot(
         self$tbl,
-        aes(x = !!sym(x), y = !!sym(freq), fill = !!sym(fill))
+        ggplot2::aes(
+          x    = !!rlang::sym(x),
+          y    = !!rlang::sym(freq),
+          fill = !!rlang::sym(fill)
+        )
       ) +
-        geom_col(width = 0.7, color = NA) +
-        coord_flip() +
-        geom_text(
-          aes(
-            label = ifelse(
-              !!sym(freq) >= 0.05,
-              percent(!!sym(freq), accuracy = 1),
-              NA
+        ggplot2::geom_col(width = 0.7, color = NA) +
+        ggplot2::coord_flip() +
+        ggplot2::geom_text(
+          ggplot2::aes(
+            label = dplyr::if_else(
+              !!rlang::sym(freq) >= 0.05,
+              scales::percent(!!rlang::sym(freq), accuracy = 1),
+              NA_character_
             )
           ),
-          position = position_stack(vjust = 0.5),
+          position = ggplot2::position_stack(vjust = 0.5),
           color = "white",
           size = letra_tam
         ) +
-        scale_y_continuous(
-          labels = percent_format(accuracy = 1),
+        ggplot2::scale_y_continuous(
+          labels = scales::percent_format(accuracy = 1),
           expand = c(0, 0)
         ) +
-        scale_fill_manual(
+        ggplot2::scale_fill_manual(
           values = colores_partidos,
-          drop = FALSE,
+          drop   = FALSE,
           breaks = names(colores_partidos),
           labels = names(colores_partidos)
         ) +
-        labs(
+        ggplot2::labs(
           x = NULL,
           y = NULL,
           caption = envoltura_cap
@@ -1081,13 +1102,14 @@ Graficar <- R6::R6Class(
           labels = ~ stringr::str_wrap(.x, width = ancho_etiquetas)
         ) +
         self$tema +
-        theme(
+        ggplot2::theme(
           legend.position = "bottom",
-          legend.title = element_blank()
+          legend.title = ggplot2::element_blank()
         )
-
+      
       return(self$grafica)
     },
+
 
     ################################### Grafica Sankey  ###################################
 
