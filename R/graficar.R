@@ -56,6 +56,9 @@ Graficar <- R6::R6Class(
     #' @field tema Tema de `ggplot` a aplicar en las gráficas.
     tema = NULL,
     niveles_ordenados = NULL,
+    orden_tema = NULL,
+    divergente = list(),  ## guarda las graficas de div, ns_nc, saldos, panel de conocimiento y respuestas positivas y negativas
+    
 
     #' Inicializar objeto Graficar
     #'
@@ -74,8 +77,7 @@ Graficar <- R6::R6Class(
       diccionario,
       colores,
       color_principal,
-      tema,
-      niveles_ordenados
+      tema
     ) {
       if (!is.null(diseno)) {
         self$diseno <- diseno
@@ -1276,7 +1278,8 @@ Graficar <- R6::R6Class(
       y = "media",
       caption = F,
       ancho_cap = 80,
-      ancho_etiquetas = 25
+      ancho_etiquetas = 25,
+      encadenar = FALSE 
     ) {
       if (isTRUE(caption)) {
         envoltura_cap <- stringr::str_wrap(
@@ -1339,8 +1342,317 @@ Graficar <- R6::R6Class(
           scales::percent(abs(x), accuracy = 1)
         }) +
         ggplot2::labs(caption = envoltura_cap, fill = NULL, color = NULL)
-      return(self$grafica)
+
+
+        self$divergente$orden_tema <- levels(self$grafica$data$nombre)  
+
+        if (encadenar) {
+        self$divergente$div <- self$grafica #guarda la grafica div
+        self$divergente$positivas <- positivas
+        self$divergente$negativas <- negativas
+        return(invisible(self)) 
+        } else {
+        return(self$grafica)
+      }
     },
+    
+   crear_ns_nc_plot = function(
+      freq      = "media",
+      letra_tam = 5
+    ) {
+
+      # 1. Leer el orden oficial de la gráfica divergente
+      orden <-  self$divergente$orden_tema
+
+      if (is.null(orden)) {
+        stop("El 'orden_tema' no existe. Asegúrate de correr la gráfica divergente primero.", call. = FALSE)
+      }
+
+      # 2. EXTRAER CÓDIGOS DINÁMICAMENTE
+      codigos_activos <- unique(as.character(self$tbl$codigo))
+
+      # 3. RESPALDO: Guardamos el estado actual
+      tbl_respaldo <- self$tbl
+
+      # 4. Transformaciones
+      self$
+        contar_variables(
+          variables = codigos_activos,
+          confint   = FALSE,
+          pct       = FALSE
+        )$
+        pegar_diccionario()$
+        extraer_respuestas(codigos_activos)$
+        filtrar_respuesta(
+          variable = "respuesta",
+          valor    = "Ns/Nc"
+        )$
+        pegar_color()
+      
+      # 5. Ajustar la tabla temporalmente de forma dinámica
+      self$tbl <- self$tbl |>
+        dplyr::mutate(
+          nombre     = factor(nombre, levels = orden), 
+          # Usamos freq para la evaluación dinámica
+          !!rlang::sym(freq) := round(.data[[freq]] * 100) / 100,
+          etiqueta = scales::percent(.data[[freq]], accuracy = 1)
+        )
+      
+      # 6. Generar la gráfica pasando freq al eje y
+      ns_nc_plot <- self$graficar_barras_h(x = "nombre", y = freq, letra_tam = letra_tam) +
+        ggplot2::theme_void() +
+        ggplot2::labs(caption = NULL, title = "Ns/Nc") +
+        ggplot2::theme(
+          text = ggplot2::element_text(
+            family = "Montserrat",
+            face   = "bold",
+            size   = 10
+          )
+        )
+      
+      # 7. Restaurar la tabla original y guardar la gráfica
+      self$tbl <- tbl_respaldo
+      self$divergente$ns_nc <- ns_nc_plot
+      
+      return(invisible(self))
+    },
+    
+    crear_saldo_plot = function(
+      positivas    = self$divergente$positivas,
+      negativas    = self$divergente$negativas,
+      freq         = "media",
+      titulo       = "Saldo",
+      family       = "Montserrat",
+      color_pos    = "#2D6A4F",
+      color_neg    = "#c51737ff",
+      color_neutro = "black",
+      size_text    = 7,
+      size_title   = 12
+    ) {
+
+      # 1. Leer el orden oficial del estado del objeto
+      orden <-  self$divergente$orden_tema
+
+      if (is.null(orden)) {
+        stop("El 'orden_tema' no existe. Asegúrate de correr la gráfica divergente primero.", call. = FALSE)
+      }
+
+      if (is.null(positivas) || is.null(negativas)) {
+        stop("Faltan respuestas positivas o negativas")
+      }
+
+      # 2. Calcular el saldo directamente sobre la tabla activa (self$tbl)
+      saldo_df <- self$tbl |>
+        dplyr::filter(respuesta %in% c(positivas, negativas)) |>
+        dplyr::group_by(nombre) |>
+        dplyr::summarise(
+          # Sumamos dinámicamente usando la variable freq
+          # Como "Peor" ya tiene signo negativo por tu paso previo (cambiarSigno_freq), 
+          # sum() automáticamente calcula el saldo (Mejor - Peor)
+          saldo = sum(.data[[freq]], na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        dplyr::mutate(
+          etiqueta_saldo = scales::percent(saldo, accuracy = 1),
+          codigo         = factor(nombre, levels = orden),
+          col_saldo      = dplyr::case_when(
+            saldo > 0 ~ color_pos,   
+            saldo < 0 ~ color_neg,   
+            TRUE      ~ color_neutro 
+          )
+        ) |>
+        tidyr::complete(
+          codigo = factor(orden, levels = orden),
+          fill   = list(saldo = 0, etiqueta_saldo = "0%")
+        ) |>
+        dplyr::mutate(
+          # Usamos el color neutro del argumento en lugar de "black" hardcodeado
+          col_saldo = dplyr::if_else(is.na(col_saldo), color_neutro, col_saldo)
+        )
+      
+      # 3. Construir la gráfica (usamos 'codigo' en 'y' para que respete los NAs rellenados)
+      saldo_plot <- ggplot2::ggplot(
+        saldo_df,
+        ggplot2::aes(y = codigo, x = 0, label = etiqueta_saldo, color = col_saldo)
+      ) +
+        ggplot2::geom_text(family = family, fontface = "bold", size = size_text, show.legend = FALSE) +
+        ggplot2::scale_color_identity() +
+        ggplot2::labs(title = titulo) +
+        ggplot2::theme_void(base_family = family) +
+        ggplot2::theme(
+          plot.title  = ggplot2::element_text(
+            hjust = 0.5, face = "bold", size = size_title, color = "black"
+          ),
+          plot.margin = ggplot2::margin(t = 22, r = 10, b = 0, l = 0)
+        )
+      
+      # 4. Guardar la gráfica en la lista interna
+      self$divergente$saldo <- saldo_plot
+      
+      # 5. Devolver self de forma invisible para continuar la cadena
+      return(invisible(self))
+    },
+
+    
+     panel_conocimiento = function(
+      variables       = NULL,
+      valor           = NULL,
+      freq            = "media",  
+      titulo          = "Conocimiento", 
+      color_punto     = "#8B1E2D",
+      max_size        = 18,
+      xlim            = c(0.9, 1.45),
+      x_text          = 1.18,
+      family          = "Montserrat",
+      titulo_size     = 26,
+      texto_size      = 6
+    ) {
+
+      # Validaciones iniciales
+      if (is.null(variables)) {
+        stop("Faltan variables para el panel de conocimiento")
+      }
+      if (is.null(valor)) {
+        stop("Falta valor para poder filtrar el panel de conocimiento")
+      }
+
+      # 1. Leer el orden oficial desde el mega-contenedor
+      orden <- self$divergente$orden_tema
+      
+      if (is.null(orden)) {
+        stop("El 'orden_tema' no existe. Asegúrate de correr la gráfica divergente primero.", call. = FALSE)
+      }
+
+      # 2. Respaldar la tabla original para no alterar los datos de la clase
+      tbl_respaldo <- self$tbl
+
+      # 3. Transformaciones (Esto modifica temporalmente self$tbl)
+      self$
+        contar_variables(
+          variables = variables,
+          confint   = FALSE,
+          pct       = FALSE
+        )$
+        pegar_diccionario()$
+        filtrar_respuesta(
+          variable = "respuesta",
+          valor    = valor
+        )
+      
+      # 4. Procesamiento de los datos directo con la columna 'nombre'
+      df_cono_plot <- self$tbl |>
+        dplyr::mutate(
+          # Solo calculamos la frecuencia usando !!rlang::sym
+          !!rlang::sym(freq) := round(.data[[freq]] * 100) / 100
+        ) |>
+        dplyr::group_by(nombre) |>
+        dplyr::summarise(
+          conocimiento = if (all(is.na(.data[[freq]]))) NA_real_ else max(.data[[freq]], na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        dplyr::right_join(
+          tibble::tibble(nombre = orden),
+          by = "nombre"
+        ) |>
+        dplyr::mutate(
+          conocimiento  = tidyr::replace_na(conocimiento, 0),
+          nombre_factor = factor(nombre, levels = orden),
+          lab           = scales::percent(conocimiento, accuracy = 1)
+        )
+      
+      # 5. ¡RESTAURAR LA TABLA ORIGINAL!
+      self$tbl <- tbl_respaldo
+      
+      # 6. Construcción del plot
+      p <- ggplot2::ggplot(df_cono_plot, ggplot2::aes(y = nombre_factor, x = 1)) +
+        ggplot2::geom_point(
+          ggplot2::aes(size = conocimiento),
+          shape = 16,
+          color = color_punto
+        ) +
+        ggplot2::geom_text(
+          ggplot2::aes(label = lab),
+          x = x_text, hjust = 0,
+          family = family,
+          fontface = "bold",
+          size = texto_size,
+          color = color_punto
+        ) +
+        ggplot2::scale_size_area(max_size = max_size) +
+        ggplot2::coord_cartesian(xlim = xlim, clip = "off") +
+        ggplot2::theme_void(base_family = family) +
+        ggplot2::theme(
+          plot.margin = ggplot2::margin(t = 10, r = 20, b = 10, l = 0)
+        ) +
+        ggplot2::guides(size = "none")
+      
+      # 7. Título opcional
+      if (!is.null(titulo) && !identical(titulo, FALSE) && !identical(titulo, "")) {
+        p <- p +
+          ggplot2::labs(title = titulo) +
+          ggplot2::theme(
+            plot.title = ggplot2::element_text(face = "bold", size = titulo_size, hjust = 0.5)
+          )
+      } else {
+        p <- p + ggplot2::theme(plot.title = ggplot2::element_blank())
+      }
+
+      # 8. Guardar en el mega-contenedor
+      self$divergente$conocimiento <- p
+
+
+      return(invisible(self)) 
+      
+    },
+
+
+
+
+
+    ensamblar_graficas = function(widths = NULL) {
+      
+      # 1. La lista de asistencia (el orden máximo posible)
+      orden_deseado <- c("div", "ns_nc", "saldo", "conocimiento")
+      
+      # 2. Los anchos recomendados para cada pieza
+      anchos_defecto <- c(div = 5, ns_nc = 0.9, saldo = 0.7, conocimiento = 0.8)
+      
+      # 3. Listas vacías para recolectar solo lo que sí existe
+      graficas_activas <- list()
+      anchos_activos <- numeric()
+      
+      # 4. Pasar lista
+      for (nombre in orden_deseado) {
+        if (!is.null(self$divergente[[nombre]])) {
+          graficas_activas[[nombre]] <- self$divergente[[nombre]]
+          anchos_activos <- c(anchos_activos, anchos_defecto[[nombre]])
+        }
+      }
+      
+      # Validación: por si ejecutas esto sin haber generado ninguna gráfica
+      if (length(graficas_activas) == 0) {
+        stop("No hay gráficas en el objeto. Corre la gráfica divergente primero.")
+      }
+      
+      # 5. Si el usuario pasa sus propios widths, los usamos; si no, usamos los dinámicos
+      if (!is.null(widths)) {
+        if (length(widths) != length(graficas_activas)) {
+          stop(sprintf("Error: Diste %d anchos, pero hay %d gráficas.", length(widths), length(graficas_activas)))
+        }
+        anchos_finales <- widths
+      } else {
+        anchos_finales <- anchos_activos
+      }
+      
+      # 6. Unir todo
+      resultado <- patchwork::wrap_plots(graficas_activas) + 
+                   patchwork::plot_layout(widths = anchos_finales, nrow = 1)
+      
+      # Como es el paso final, este método SÍ devuelve un ggplot (patchwork) y rompe la cadena
+      return(resultado)
+    },
+    
+
 
     #' Preparar datos para gráfico de waffle
     #' @param eje_y,            columna fija (eje Y)
