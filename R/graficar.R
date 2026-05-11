@@ -1349,13 +1349,26 @@ Graficar <- R6::R6Class(
                                       levels()
 
         if (encadenar) {
-        self$divergente$div <- self$grafica #guarda la grafica div
-        self$divergente$positivas <- positivas
-        self$divergente$negativas <- negativas
-        return(invisible(self)) 
+          orden_col <- self$grafica$data |>
+            dplyr::pull(!!rlang::sym(x))
+                
+          self$divergente <- list()
+                
+          self$divergente$orden_tema <- if (is.factor(orden_col)) {
+            levels(orden_col)
+          } else {
+            unique(as.character(orden_col))
+          }
+          
+          self$divergente$col_orden <- x
+          self$divergente$div <- self$grafica
+          self$divergente$positivas <- positivas
+          self$divergente$negativas <- negativas
+          
+          return(invisible(self)) 
         } else {
-        return(self$grafica)
-      }
+          return(self$grafica)
+        }
     },
     
    crear_ns_nc_plot = function(
