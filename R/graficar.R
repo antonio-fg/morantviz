@@ -1344,7 +1344,9 @@ Graficar <- R6::R6Class(
         ggplot2::labs(caption = envoltura_cap, fill = NULL, color = NULL)
 
 
-        self$divergente$orden_tema <- levels(self$grafica$data$nombre)  
+        self$divergente$orden_tema <- self$divergente$orden_tema <- self$grafica$data |>
+                                      dplyr::pull(!!rlang::sym(x)) |>
+                                      levels()
 
         if (encadenar) {
         self$divergente$div <- self$grafica #guarda la grafica div
@@ -1358,23 +1360,26 @@ Graficar <- R6::R6Class(
     
    crear_ns_nc_plot = function(
       freq      = "media",
-      letra_tam = 5
+      letra_tam = 5,
+      titulo_tam = 8,
+      titulo = "Ns/Nc",
+      col = "nombre"
     ) {
 
-      # 1. Leer el orden oficial de la gráfica divergente
+      # orden oficial de la gráfica divergente
       orden <-  self$divergente$orden_tema
 
       if (is.null(orden)) {
         stop("El 'orden_tema' no existe. Asegúrate de correr la gráfica divergente primero.", call. = FALSE)
       }
 
-      # 2. EXTRAER CÓDIGOS DINÁMICAMENTE
+      #EXTRAER CÓDIGOS DINÁMICAMENTE
       codigos_activos <- unique(as.character(self$tbl$codigo))
 
-      # 3. RESPALDO: Guardamos el estado actual
+      #RESPALDO: Guardamos el estado actual
       tbl_respaldo <- self$tbl
 
-      # 4. Transformaciones
+      # Transformaciones
       self$
         contar_variables(
           variables = codigos_activos,
@@ -1389,24 +1394,23 @@ Graficar <- R6::R6Class(
         )$
         pegar_color()
       
-      # 5. Ajustar la tabla temporalmente de forma dinámica
+      # Ajustar la tabla temporalmente de forma dinámica
       self$tbl <- self$tbl |>
         dplyr::mutate(
-          nombre     = factor(nombre, levels = orden), 
-          # Usamos freq para la evaluación dinámica
-          !!rlang::sym(freq) := round(.data[[freq]] * 100) / 100,
-          etiqueta = scales::percent(.data[[freq]], accuracy = 1)
+        !!rlang::sym(col) := factor(!!rlang::sym(col), levels = orden),
+        !!rlang::sym(freq) := round(!!rlang::sym(freq) * 100) / 100,
+        etiqueta = scales::percent(!!rlang::sym(freq), accuracy = 1)
         )
       
-      # 6. Generar la gráfica pasando freq al eje y
-      ns_nc_plot <- self$graficar_barras_h(x = "nombre", y = freq, letra_tam = letra_tam) +
+      # Genera la gráfica pasando freq al eje y
+      ns_nc_plot <- self$graficar_barras_h(x = col, y = freq, letra_tam = letra_tam) +
         ggplot2::theme_void() +
-        ggplot2::labs(caption = NULL, title = "Ns/Nc") +
+        ggplot2::labs(caption = NULL, title = titulo) +
         ggplot2::theme(
           text = ggplot2::element_text(
             family = "Montserrat",
             face   = "bold",
-            size   = 10
+            size   = titulo_tam
           )
         )
       
@@ -1426,8 +1430,9 @@ Graficar <- R6::R6Class(
       color_pos    = "#2D6A4F",
       color_neg    = "#c51737ff",
       color_neutro = "black",
-      size_text    = 7,
-      size_title   = 12
+      text_tam     = 7,
+      titulo_tam   = 12,
+      col = "nombre"
     ) {
 
       # 1. Leer el orden oficial del estado del objeto
@@ -1441,20 +1446,17 @@ Graficar <- R6::R6Class(
         stop("Faltan respuestas positivas o negativas")
       }
 
-      # 2. Calcular el saldo directamente sobre la tabla activa (self$tbl)
+      # Calcula el saldo directamente sobre la tabla activa (self$tbl)
       saldo_df <- self$tbl |>
         dplyr::filter(respuesta %in% c(positivas, negativas)) |>
-        dplyr::group_by(nombre) |>
+        dplyr::group_by(!!rlang::sym(col)) |>
         dplyr::summarise(
-          # Sumamos dinámicamente usando la variable freq
-          # Como "Peor" ya tiene signo negativo por tu paso previo (cambiarSigno_freq), 
-          # sum() automáticamente calcula el saldo (Mejor - Peor)
-          saldo = sum(.data[[freq]], na.rm = TRUE),
+          saldo = sum(!!rlang::sym(freq), na.rm = TRUE),
           .groups = "drop"
         ) |>
         dplyr::mutate(
           etiqueta_saldo = scales::percent(saldo, accuracy = 1),
-          codigo         = factor(nombre, levels = orden),
+          col_factor     = factor(!!rlang::sym(col), levels = orden),
           col_saldo      = dplyr::case_when(
             saldo > 0 ~ color_pos,   
             saldo < 0 ~ color_neg,   
@@ -1462,26 +1464,26 @@ Graficar <- R6::R6Class(
           )
         ) |>
         tidyr::complete(
-          codigo = factor(orden, levels = orden),
-          fill   = list(saldo = 0, etiqueta_saldo = "0%")
+          col_factor = factor(orden, levels = orden),
+          fill = list(saldo = 0, etiqueta_saldo = "0%")
         ) |>
         dplyr::mutate(
           # Usamos el color neutro del argumento en lugar de "black" hardcodeado
           col_saldo = dplyr::if_else(is.na(col_saldo), color_neutro, col_saldo)
         )
       
-      # 3. Construir la gráfica (usamos 'codigo' en 'y' para que respete los NAs rellenados)
+      # Construye la gráfica (usamos 'codigo' en 'y' para que respete los NAs rellenados)
       saldo_plot <- ggplot2::ggplot(
         saldo_df,
-        ggplot2::aes(y = codigo, x = 0, label = etiqueta_saldo, color = col_saldo)
+        ggplot2::aes(y = col_factor, x = 0, label = etiqueta_saldo, color = col_saldo)
       ) +
-        ggplot2::geom_text(family = family, fontface = "bold", size = size_text, show.legend = FALSE) +
+        ggplot2::geom_text(family = family, fontface = "bold", size = text_tam, show.legend = FALSE) +
         ggplot2::scale_color_identity() +
         ggplot2::labs(title = titulo) +
         ggplot2::theme_void(base_family = family) +
         ggplot2::theme(
           plot.title  = ggplot2::element_text(
-            hjust = 0.5, face = "bold", size = size_title, color = "black"
+            hjust = 0.5, face = "bold", size = titulo_tam, color = "black"
           ),
           plot.margin = ggplot2::margin(t = 22, r = 10, b = 0, l = 0)
         )
@@ -1505,7 +1507,8 @@ Graficar <- R6::R6Class(
       x_text          = 1.18,
       family          = "Montserrat",
       titulo_size     = 26,
-      texto_size      = 6
+      texto_size      = 6,
+      col             = "nombre"
     ) {
 
       # Validaciones iniciales
@@ -1542,29 +1545,33 @@ Graficar <- R6::R6Class(
       # 4. Procesamiento de los datos directo con la columna 'nombre'
       df_cono_plot <- self$tbl |>
         dplyr::mutate(
-          # Solo calculamos la frecuencia usando !!rlang::sym
-          !!rlang::sym(freq) := round(.data[[freq]] * 100) / 100
+          !!rlang::sym(freq) := round(!!rlang::sym(freq) * 100) / 100
         ) |>
-        dplyr::group_by(nombre) |>
+        dplyr::group_by(!!rlang::sym(col)) |>
         dplyr::summarise(
-          conocimiento = if (all(is.na(.data[[freq]]))) NA_real_ else max(.data[[freq]], na.rm = TRUE),
+          conocimiento = if (all(is.na(!!rlang::sym(freq)))) {
+            NA_real_
+          } else {
+            max(!!rlang::sym(freq), na.rm = TRUE)
+          },
           .groups = "drop"
         ) |>
         dplyr::right_join(
-          tibble::tibble(nombre = orden),
-          by = "nombre"
+          tibble::tibble(
+            !!rlang::sym(col) := orden
+          ),
+          by = col
         ) |>
         dplyr::mutate(
-          conocimiento  = tidyr::replace_na(conocimiento, 0),
-          nombre_factor = factor(nombre, levels = orden),
-          lab           = scales::percent(conocimiento, accuracy = 1)
+          conocimiento = tidyr::replace_na(conocimiento, 0),
+          col_factor   = factor(!!rlang::sym(col), levels = orden),
+          lab          = scales::percent(conocimiento, accuracy = 1)
         )
-      
       # 5. ¡RESTAURAR LA TABLA ORIGINAL!
       self$tbl <- tbl_respaldo
       
       # 6. Construcción del plot
-      p <- ggplot2::ggplot(df_cono_plot, ggplot2::aes(y = nombre_factor, x = 1)) +
+      p <- ggplot2::ggplot(df_cono_plot, ggplot2::aes(y = col_factor, x = 1)) +
         ggplot2::geom_point(
           ggplot2::aes(size = conocimiento),
           shape = 16,
@@ -1605,54 +1612,78 @@ Graficar <- R6::R6Class(
       
     },
 
-
-
-
-
     ensamblar_graficas = function(widths = NULL) {
-      
-      # 1. La lista de asistencia (el orden máximo posible)
+  
       orden_deseado <- c("div", "ns_nc", "saldo", "conocimiento")
-      
-      # 2. Los anchos recomendados para cada pieza
-      anchos_defecto <- c(div = 5, ns_nc = 0.9, saldo = 0.7, conocimiento = 0.8)
-      
-      # 3. Listas vacías para recolectar solo lo que sí existe
-      graficas_activas <- list()
-      anchos_activos <- numeric()
-      
-      # 4. Pasar lista
-      for (nombre in orden_deseado) {
-        if (!is.null(self$divergente[[nombre]])) {
-          graficas_activas[[nombre]] <- self$divergente[[nombre]]
-          anchos_activos <- c(anchos_activos, anchos_defecto[[nombre]])
-        }
-      }
-      
-      # Validación: por si ejecutas esto sin haber generado ninguna gráfica
-      if (length(graficas_activas) == 0) {
-        stop("No hay gráficas en el objeto. Corre la gráfica divergente primero.")
-      }
-      
-      # 5. Si el usuario pasa sus propios widths, los usamos; si no, usamos los dinámicos
-      if (!is.null(widths)) {
-        if (length(widths) != length(graficas_activas)) {
-          stop(sprintf("Error: Diste %d anchos, pero hay %d gráficas.", length(widths), length(graficas_activas)))
-        }
-        anchos_finales <- widths
-      } else {
-        anchos_finales <- anchos_activos
-      }
-      
-      # 6. Unir todo
-      resultado <- patchwork::wrap_plots(graficas_activas) + 
-                   patchwork::plot_layout(widths = anchos_finales, nrow = 1)
-      
-      # Como es el paso final, este método SÍ devuelve un ggplot (patchwork) y rompe la cadena
-      return(resultado)
-    },
-    
 
+      anchos_defecto <- c(
+        div = 5,
+        ns_nc = 0.9,
+        saldo = 0.7,
+        conocimiento = 0.8
+      )
+
+      graficas_activas <- list()
+
+      for (pieza in orden_deseado) {
+        if (!is.null(self$divergente[[pieza]])) {
+          graficas_activas[[pieza]] <- self$divergente[[pieza]]
+        }
+      }
+
+      if (length(graficas_activas) == 0) {
+        stop("No hay gráficas en el objeto. Corre la gráfica divergente primero.", call. = FALSE)
+      }
+
+      piezas_activas <- names(graficas_activas)
+
+      if (!is.null(widths)) {
+
+        if (!is.null(names(widths))) {
+          faltantes <- setdiff(piezas_activas, names(widths))
+
+          if (length(faltantes) > 0) {
+            stop(
+              sprintf(
+                "Faltan widths para: %s",
+                paste(faltantes, collapse = ", ")
+              ),
+              call. = FALSE
+            )
+          }
+
+          anchos_finales <- widths[piezas_activas]
+
+        } else {
+          if (length(widths) != length(graficas_activas)) {
+            stop(
+              sprintf(
+                "Error: Diste %d anchos, pero hay %d gráficas.",
+                length(widths),
+                length(graficas_activas)
+              ),
+              call. = FALSE
+            )
+          }
+
+          anchos_finales <- widths
+        }
+
+      } else {
+        anchos_finales <- anchos_defecto[piezas_activas]
+      }
+
+      resultado <- patchwork::wrap_plots(graficas_activas) +
+        patchwork::plot_layout(
+          widths = anchos_finales,
+          nrow = 1
+        )
+      
+      return(resultado)
+      },
+
+
+    
 
     #' Preparar datos para gráfico de waffle
     #' @param eje_y,            columna fija (eje Y)
