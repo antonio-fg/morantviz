@@ -103,7 +103,14 @@ g <- Graficar$new(
 
 ################################### Graficar nube ###################################
 
-g$procesar_nubes("j_problemaJefe")$graficar_nube(
-  n = 2,
+g$contar_variable_multirespuesta(variable = "categoria_j_problemaJefe", sep = ">>>",confint = F)$
+  calcular_pct()$
+  graficar_nube(
+  max_size = 10,
+  umbral = 2,
+  freq = "pct",
   gradiente = c(bajo = "#ca4992", alto = "#5B1AA4")
 )
+
+
+
