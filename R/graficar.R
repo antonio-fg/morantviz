@@ -1168,20 +1168,6 @@ Graficar <- R6::R6Class(
       return(self$grafica)
     },
 
-    ################################### Procesar nubes ###################################
-
-    #' Aplica el método multirespuesta para poder calcular las frecuencias y porcentajes
-    #' de cada categoría y los asignarlos en la `self$tbl`
-    #'
-
-    procesar_nubes = function(codigo, confint = F) {
-      self$contar_variable_multirespuesta(
-        variable = paste("categoria", codigo, sep = "_"),
-        sep = ">>>",
-        confint
-      )
-    },
-
     ################################### Graficar nube ###################################
 
     #' Grafica la nube de las categorias previemente procesadas
@@ -1190,23 +1176,39 @@ Graficar <- R6::R6Class(
 
     graficar_nube = function(
       max_size = 15,
-      n = 5,
+      umbral = 5,
+      freq = c('pct','media','n'),
       gradiente = c(bajo = "#ca4992", alto = "#5B1AA4")
-    ) {
+       ) {
+      
+      freq <- match.arg(freq)
+
       self$grafica <- self$tbl |>
-        filter(
-          !respuesta %in% c("categoría inventada", "sin_categoria"),
-          n >= !!n
-        ) |>
-        mutate(respuesta = str_to_sentence(respuesta)) |>
-        ggplot(aes(label = respuesta, size = n, color = n)) +
-        geom_text_wordcloud() +
-        scale_size_area(max_size = max_size) +
-        scale_color_gradient(
-          low = gradiente["bajo"],
-          high = gradiente["alto"]
-        ) +
-        tema_morant()
+        dplyr::mutate(
+          respuesta =stringr::str_to_sentence(respuesta),
+          pct_umbral = switch(
+            freq,
+            n = n/sum(n),
+            media = media,
+            pct = pct
+          )
+        ) |> 
+        dplyr::filter(pct_umbral * 100 >= umbral) |>
+          ggplot2::ggplot(
+            ggplot2::aes(
+              label = respuesta,
+              size = .data[[freq]],
+              color = .data[[freq]]
+            )
+          ) +
+          ggwordcloud::geom_text_wordcloud() +
+          ggplot2::scale_size_area(max_size = max_size) +
+          ggplot2::scale_color_gradient(
+            low = gradiente[["bajo"]],
+            high = gradiente[["alto"]]
+          ) +
+          tema_morant()
+      
       return(self$grafica)
     },
 
